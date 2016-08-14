@@ -26,10 +26,9 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
+namespace WhiteCore.Physics.ConvexDecompositionDotNet
 {
     public enum PlaneTriResult : int
     {
@@ -188,7 +187,7 @@ namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
             }
 
             // Next test ray segment P3 to P1
-            if (r3 != r1) // if these are both on the same side...
+            if (r3 != r1) // if both these are not on the same side...
             {
                 float3 split = new float3(); // split the point
                 intersect(p3, p1, split, plane);
@@ -197,11 +196,15 @@ namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
                 {
                     add(split, front, ref fcount);
                     add(split, back, ref bcount);
+
+                    add (p3, back, ref bcount);
                 }
                 else
                 {
                     add(split, front, ref fcount);
                     add(split, back, ref bcount);
+
+                    add (p3, front, ref fcount);
                 }
             }
 

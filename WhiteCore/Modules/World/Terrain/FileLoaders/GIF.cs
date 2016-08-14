@@ -28,18 +28,21 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using WhiteCore.Framework;
+
 using WhiteCore.Framework.Modules;
 
 namespace WhiteCore.Modules.Terrain.FileLoaders
 {
-    internal class GIF : GenericSystemDrawing
+    class GIF : GenericSystemDrawing
     {
 		public override void SaveFile(string filename, ITerrainChannel map)
         {
             Bitmap colours = CreateGrayscaleBitmapFromMap(map);
-
-            colours.Save(filename, ImageFormat.Gif);
+            try {
+                colours.Save (filename, ImageFormat.Gif);
+            } catch {
+            }
+            colours.Dispose ();
         }
 
         /// <summary>
@@ -50,8 +53,11 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
         public override void SaveStream(Stream stream, ITerrainChannel map)
         {
             Bitmap colours = CreateGrayscaleBitmapFromMap(map);
-
-            colours.Save(stream, ImageFormat.Gif);
+            try {
+                colours.Save (stream, ImageFormat.Gif);
+            } catch {
+            }
+            colours.Dispose ();
         }
 
         public override string ToString()

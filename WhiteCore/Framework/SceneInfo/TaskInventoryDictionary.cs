@@ -45,8 +45,6 @@ namespace WhiteCore.Framework.SceneInfo
     public class TaskInventoryDictionary : Dictionary<UUID, TaskInventoryItem>,
                                            ICloneable, IXmlSerializable
     {
-        // private static readonly ILog MainConsole.Instance = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private static readonly XmlSerializer tiiSerializer = new XmlSerializer(typeof (TaskInventoryItem));
 
         #region ICloneable Members
@@ -88,7 +86,7 @@ namespace WhiteCore.Framework.SceneInfo
                     TaskInventoryItem item = (TaskInventoryItem) tiiSerializer.Deserialize(reader);
                     Add(item.ItemID, item);
 
-                    //MainConsole.Instance.DebugFormat("[TASK INVENTORY]: Instanted prim item {0}, {1} from xml", item.Name, item.ItemID);
+                    //MainConsole.Instance.DebugFormat("[TASK INVENTORY]: Instantiated prim item {0}, {1} from xml", item.Name, item.ItemID);
                 }
 
                 // MainConsole.Instance.DebugFormat("[TASK INVENTORY]: Instantiated {0} prim items in total from xml", Count);

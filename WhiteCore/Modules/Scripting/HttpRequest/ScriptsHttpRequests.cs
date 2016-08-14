@@ -36,12 +36,10 @@ using System.Text;
 using System.Threading;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.SceneInfo;
-using WhiteCore.Framework.Servers.HttpServer.Implementation;
 using WhiteCore.Framework.Utilities;
 using Nini.Config;
 using OpenMetaverse;
-using WhiteCore.Framework;
-using WhiteCore.Framework.Servers.HttpServer;
+
 
 /*****************************************************
  *
@@ -56,7 +54,7 @@ using WhiteCore.Framework.Servers.HttpServer;
  * LSLLongCmdHandler, such as the HttpRequestClass, the
  * start and stop methods, and setting up pending and
  * completed queues.  These are processed in the
- * LSLLongCmdHandler polling loop.  Similiar to the
+ * LSLLongCmdHandler polling loop.  Similar to the
  * XMLRPCModule, since that seems to work.
  *
  * This probably needs some throttling mechanism but

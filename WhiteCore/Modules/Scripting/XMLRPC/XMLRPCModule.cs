@@ -25,23 +25,23 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
-using WhiteCore.Framework.ConsoleFramework;
-using WhiteCore.Framework.Modules;
-using WhiteCore.Framework.SceneInfo;
-using WhiteCore.Framework.Servers;
-using WhiteCore.Framework.Servers.HttpServer;
-using WhiteCore.Framework.Servers.HttpServer.Interfaces;
-using WhiteCore.Framework.Utilities;
-using Nini.Config;
-using Nwc.XmlRpc;
-using OpenMetaverse;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using Nini.Config;
+using Nwc.XmlRpc;
+using OpenMetaverse;
+using WhiteCore.Framework.ConsoleFramework;
+using WhiteCore.Framework.Modules;
+using WhiteCore.Framework.SceneInfo;
+//using WhiteCore.Framework.Servers;
+//using WhiteCore.Framework.Servers.HttpServer;
+using WhiteCore.Framework.Servers.HttpServer.Interfaces;
+using WhiteCore.Framework.Services;
+using WhiteCore.Framework.Utilities;
 
 /*****************************************************
  *
@@ -78,44 +78,87 @@ using System.Threading;
 
 namespace WhiteCore.Modules.Scripting
 {
-    public class XMLRPCModule : INonSharedRegionModule, IXMLRPC
+    public class XMLRPCModule : IService, INonSharedRegionModule, IXMLRPC
     {
-        private readonly object XMLRPCListLock = new object();
-        private int RemoteReplyScriptTimeout = 9000;
-        private int RemoteReplyScriptWait = 300;
-        private bool m_httpServerStarted;
+        IRegistryCore m_registry;
+        protected IHttpServer m_server;
+        
+        readonly object XMLRPCListLock = new object();
+        int RemoteReplyScriptTimeout = 9000;
+        int RemoteReplyScriptWait = 300;
+        int m_remoteDataPort = 20800;
+        bool m_httpServerStarted;
 
-        private string m_name = "XMLRPCModule";
+        string m_name = "XMLRPCModule";
 
         // <channel id, RPCChannelInfo>
-        private Dictionary<UUID, RPCChannelInfo> m_openChannels;
-        private Dictionary<UUID, SendRemoteDataRequest> m_pendingSRDResponses;
-        private int m_remoteDataPort;
+        Dictionary<UUID, RPCChannelInfo> m_openChannels;
+        Dictionary<UUID, SendRemoteDataRequest> m_pendingSRDResponses;
 
-        private Dictionary<UUID, RPCRequestInfo> m_rpcPending;
-        private Dictionary<UUID, RPCRequestInfo> m_rpcPendingResponses;
-        private IScriptModule m_scriptModule;
+        Dictionary<UUID, RPCRequestInfo> m_rpcPending;
+        Dictionary<UUID, RPCRequestInfo> m_rpcPendingResponses;
+        IScriptModule m_scriptModule;
+
+        #region IService Members
+        public void Initialize(IConfigSource config, IRegistryCore registry)
+        {
+            m_registry = registry;
+            if (config.Configs ["XMLRPC"] != null)
+                m_remoteDataPort = config.Configs ["XMLRPC"].GetInt ("XmlRpcPort", m_remoteDataPort);
+
+
+        }
+
+        public void Start(IConfigSource config, IRegistryCore registry)
+        {
+        }
+
+        public void FinishedStartup ()
+        {
+            var simBase = m_registry.RequestModuleInterface<ISimulationBase> ();
+            if (simBase.IsGridServer)
+                return;
+
+            //start XMLRPC server only for regions
+            if (IsEnabled () && !ServerStarted ()) {
+                m_httpServerStarted = true;
+                // Start http server
+                // Attach xmlrpc handlers
+                MainConsole.Instance.Info ("[XMLRPC]: " +
+                    "Starting up XMLRPC Server on port " + m_remoteDataPort +
+                    " for llRemoteData commands.");
+                //IHttpServer httpServer = new BaseHttpServer ((uint)m_remoteDataPort, MainServer.Instance.HostName,
+                //    false, 1);
+                //httpServer.AddXmlRPCHandler ("llRemoteData", XmlRpcRemoteData);
+                //httpServer.Start ();
+
+                m_server = simBase.GetHttpServer ((uint)m_remoteDataPort);
+                m_server.AddXmlRPCHandler ("llRemoteData", XmlRpcRemoteData);
+
+            }
+        }
+
+        #endregion
 
         #region INonSharedRegionModule Members
 
         public void Initialise(IConfigSource config)
         {
+
             // We need to create these early because the scripts might be calling
             // But since this gets called for every region, we need to make sure they
             // get called only one time (or we lose any open channels)
-            if (null == m_openChannels)
+            if (m_openChannels == null)
             {
                 m_openChannels = new Dictionary<UUID, RPCChannelInfo>();
                 m_rpcPending = new Dictionary<UUID, RPCRequestInfo>();
                 m_rpcPendingResponses = new Dictionary<UUID, RPCRequestInfo>();
                 m_pendingSRDResponses = new Dictionary<UUID, SendRemoteDataRequest>();
 
-                if (config.Configs["XMLRPC"] != null)
-                    m_remoteDataPort = config.Configs["XMLRPC"].GetInt("XmlRpcPort", m_remoteDataPort);
             }
         }
 
-        public void AddRegion(IScene scene)
+        public void AddRegion (IScene scene)
         {
             scene.RegisterModuleInterface<IXMLRPC>(this);
         }
@@ -127,19 +170,6 @@ namespace WhiteCore.Modules.Scripting
 
         public void RegionLoaded(IScene scene)
         {
-            if (IsEnabled() && !m_httpServerStarted)
-            {
-                m_httpServerStarted = true;
-                // Start http server
-                // Attach xmlrpc handlers
-                MainConsole.Instance.Info("[XMLRPC MODULE]: " +
-                                          "Starting up XMLRPC Server on port " + m_remoteDataPort +
-                                          " for llRemoteData commands.");
-                IHttpServer httpServer = new BaseHttpServer((uint) m_remoteDataPort, MainServer.Instance.HostName,
-                                                            false, 1);
-                httpServer.AddXmlRPCHandler("llRemoteData", XmlRpcRemoteData);
-                httpServer.Start();
-            }
             m_scriptModule = scene.RequestModuleInterface<IScriptModule>();
         }
 
@@ -171,6 +201,11 @@ namespace WhiteCore.Modules.Scripting
             return (m_remoteDataPort > 0);
         }
 
+        public bool ServerStarted()
+        {
+            return m_httpServerStarted;
+        }
+
         /**********************************************
          * OpenXMLRPCChannel
          *
@@ -196,7 +231,7 @@ namespace WhiteCore.Modules.Scripting
             // This should no longer happen, but the check is reasonable anyway
             if (null == m_openChannels)
             {
-                MainConsole.Instance.Warn("[XML RPC MODULE]: Attempt to open channel before initialization is complete");
+                MainConsole.Instance.Warn("[XMLRPC]: Attempt to open channel before initialization is complete");
                 return newChannel;
             }
 
@@ -280,7 +315,7 @@ namespace WhiteCore.Modules.Scripting
             }
             else
             {
-                MainConsole.Instance.Warn("[XML RPC MODULE]: Channel or message_id not found");
+                MainConsole.Instance.Warn("[XMLRPC]: Channel or message_id not found");
             }
         }
 
@@ -341,7 +376,7 @@ namespace WhiteCore.Modules.Scripting
                 }
                 else
                 {
-                    MainConsole.Instance.Error("[XML RPC MODULE]: UNABLE TO REMOVE COMPLETED REQUEST");
+                    MainConsole.Instance.Error("[XMLRPC]: Unable to complete request");
                 }
             }
         }
@@ -471,15 +506,15 @@ namespace WhiteCore.Modules.Scripting
 
     public class RPCRequestInfo : IXmlRpcRequestInfo
     {
-        private readonly UUID m_ChannelKey;
-        private readonly string m_IntVal;
-        private readonly UUID m_ItemID;
-        private readonly UUID m_MessageID;
-        private readonly UUID m_PrimID;
-        private readonly string m_StrVal;
-        private bool m_processed;
-        private int m_respInt;
-        private string m_respStr;
+        readonly UUID m_ChannelKey;
+        readonly string m_IntVal;
+        readonly UUID m_ItemID;
+        readonly UUID m_MessageID;
+        readonly UUID m_PrimID;
+        readonly string m_StrVal;
+        bool m_processed;
+        int m_respInt;
+        string m_respStr;
 
         public RPCRequestInfo(UUID primID, UUID itemID, UUID channelKey, string strVal, string intVal)
         {
@@ -490,7 +525,7 @@ namespace WhiteCore.Modules.Scripting
             m_ChannelKey = channelKey;
             m_MessageID = UUID.Random();
             m_processed = false;
-            m_respStr = String.Empty;
+            m_respStr = string.Empty;
             m_respInt = 0;
         }
 
@@ -561,9 +596,9 @@ namespace WhiteCore.Modules.Scripting
 
     public class RPCChannelInfo
     {
-        private readonly UUID m_ChannelKey;
-        private readonly UUID m_itemID;
-        private readonly UUID m_primID;
+        readonly UUID m_ChannelKey;
+        readonly UUID m_itemID;
+        readonly UUID m_primID;
 
         public RPCChannelInfo(UUID primID, UUID itemID, UUID channelID)
         {
@@ -598,15 +633,15 @@ namespace WhiteCore.Modules.Scripting
         public int ResponseIdata { get; set; }
         public string ResponseSdata { get; set; }
         public string Sdata { get; set; }
-        private bool _finished;
-        private Thread httpThread;
+        bool _finished;
+        Thread httpThread;
 
         public SendRemoteDataRequest(UUID primID, UUID itemID, string channel, string dest, int idata, string sdata)
         {
-            this.Channel = channel;
+            Channel = channel;
             DestURL = dest;
-            this.Idata = idata;
-            this.Sdata = sdata;
+            Idata = idata;
+            Sdata = sdata;
             ItemID = itemID;
             PrimID = primID;
 

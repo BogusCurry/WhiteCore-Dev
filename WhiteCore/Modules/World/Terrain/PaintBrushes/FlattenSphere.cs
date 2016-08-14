@@ -26,11 +26,10 @@
  */
 
 using System;
-using System.Collections.Generic;
+using OpenMetaverse;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.SceneInfo;
-using OpenMetaverse;
-using WhiteCore.Framework;
+
 
 namespace WhiteCore.Modules.Terrain.PaintBrushes
 {

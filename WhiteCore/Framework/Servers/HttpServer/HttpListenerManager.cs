@@ -1,8 +1,35 @@
-﻿using WhiteCore.Framework.ConsoleFramework;
+﻿/*
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://aurora-sim.org
+ * See CONTRIBUTORS.TXT for a full list of copyright holders.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the WhiteCore-Sim Project nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Threading;
+using WhiteCore.Framework.ConsoleFramework;
 
 namespace WhiteCore.Framework.Servers.HttpServer
 {
@@ -12,15 +39,16 @@ namespace WhiteCore.Framework.Servers.HttpServer
         // 1229 - An operation was attempted on a nonexistent network connection
         // 995  - The I/O operation has been aborted because of either a thread exit or an application request.
         public static readonly int[] IGNORE_ERROR_CODES = new int[3] { 64, 1229, 995 };
-        private readonly HttpListener _listener;
-        private readonly Thread _listenerThread;
-        private readonly Thread[] _workers;
-        private ConcurrentQueue<HttpListenerContext> _queue;
         public event Action<HttpListenerContext> ProcessRequest;
-        private ManualResetEvent _newQueueItem = new ManualResetEvent(false), _listenForNextRequest = new ManualResetEvent(false);
-        private bool _isSecure = false;
-        private bool _isRunning = false;
-        private int _lockedQueue = 0;
+
+        ConcurrentQueue<HttpListenerContext> _queue;
+        ManualResetEvent _newQueueItem = new ManualResetEvent(false), _listenForNextRequest = new ManualResetEvent(false);
+        readonly HttpListener _listener;
+        readonly Thread _listenerThread;
+        readonly Thread[] _workers;
+        bool _isSecure;
+        bool _isRunning;
+        int _lockedQueue;
 
         public HttpListenerManager(uint maxThreads, bool isSecure)
         {
@@ -69,7 +97,7 @@ namespace WhiteCore.Framework.Servers.HttpServer
 
 #if true //LINUX
 
-        private void HandleRequests()
+        void HandleRequests()
         {
             while (_listener.IsListening)
             {
@@ -79,7 +107,7 @@ namespace WhiteCore.Framework.Servers.HttpServer
             }
         }
 
-        private void ListenerCallback(IAsyncResult result)
+        void ListenerCallback(IAsyncResult result)
         {
             HttpListenerContext context = null;
 
@@ -90,7 +118,7 @@ namespace WhiteCore.Framework.Servers.HttpServer
             }
             catch (Exception ex)
             {
-                MainConsole.Instance.ErrorFormat("[HttpListenerManager]: Exception occured: {0}", ex.ToString());
+                MainConsole.Instance.ErrorFormat("[HttpListenerManager]: Exception occurred: {0}", ex.ToString());
                 return;
             }
             finally
@@ -132,7 +160,7 @@ namespace WhiteCore.Framework.Servers.HttpServer
 
 #endif
 
-        private void Worker()
+        void Worker()
         {
             while ((_queue.Count > 0 || _newQueueItem.WaitOne()) && _listener.IsListening)
             {
@@ -151,7 +179,7 @@ namespace WhiteCore.Framework.Servers.HttpServer
                 }
                 catch (Exception e)
                 {
-                    MainConsole.Instance.ErrorFormat("[HttpListenerManager]: Exception occured: {0}", e.ToString());
+                    MainConsole.Instance.ErrorFormat("[HttpListenerManager]: Exception occurred: {0}", e.ToString());
                 }
             }
         }

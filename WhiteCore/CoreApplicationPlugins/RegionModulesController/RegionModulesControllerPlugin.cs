@@ -44,8 +44,8 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
         // Config access
 
         // Our name
-        private const string m_name = "RegionModulesControllerPlugin";
-        private ISimulationBase m_openSim;
+        const string m_name = "RegionModulesControllerPlugin";
+        ISimulationBase m_simBase;
 
         #region IApplicationPlugin Members
 
@@ -61,7 +61,7 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
         // The root of all evil.
         // This is where we handle adding the modules to scenes when they
         // load. This means that here we deal with replaceable interfaces,
-        // nonshared modules, etc.
+        // non-shared modules, etc.
         //
 
         protected Dictionary<IScene, Dictionary<string, IRegionModuleBase>> RegionModules =
@@ -78,7 +78,7 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
             Type s = scene.GetType();
             MethodInfo mi = s.GetMethod("RequestModuleInterface");
 
-            // Scan for, and load, nonshared modules
+            // Scan for, and load, non-shared modules
             List<INonSharedRegionModule> list = new List<INonSharedRegionModule>();
             List<INonSharedRegionModule> m_nonSharedModules = WhiteCoreModuleLoader.PickupModules<INonSharedRegionModule>();
             foreach (INonSharedRegionModule module in m_nonSharedModules)
@@ -103,8 +103,8 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
                 //MainConsole.Instance.DebugFormat("[REGIONMODULE]: Adding scene {0} to non-shared module {1}",
                 //                  scene.RegionInfo.RegionName, module.Name);
 
-                // Initialise the module
-                module.Initialise(m_openSim.ConfigSource);
+                // Initialize the module
+                module.Initialise(m_simBase.ConfigSource);
 
                 IRegionModuleBaseModules.Add(module);
                 list.Add(module);
@@ -127,7 +127,7 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
                 AddRegionModule(scene, module.Name, module);
             }
 
-            // Same thing for nonshared modules, load them unless overridden
+            // Same thing for non-shared modules, load them unless overridden
             List<INonSharedRegionModule> deferredlist =
                 new List<INonSharedRegionModule>();
 
@@ -152,7 +152,7 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
 
                 try
                 {
-                    module.Initialise(m_openSim.ConfigSource);
+                    module.Initialise(m_simBase.ConfigSource);
                 }
                 catch (Exception ex)
                 {
@@ -185,7 +185,7 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
             // interface would be successful only depending on load order,
             // which can't be depended upon, or modules would need to resort
             // to ugly kludges to attempt to request interfaces when needed
-            // and unneccessary caching logic repeated in all modules.
+            // and unnecessary caching logic repeated in all modules.
             // The extra function stub is just that much cleaner
             //
             foreach (INonSharedRegionModule module in list)
@@ -217,7 +217,7 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
             RegionModules[scene].Clear();
         }
 
-        private void AddRegionModule(IScene scene, string p, IRegionModuleBase module)
+        void AddRegionModule(IScene scene, string p, IRegionModuleBase module)
         {
             if (!RegionModules.ContainsKey(scene))
                 RegionModules.Add(scene, new Dictionary<string, IRegionModuleBase>());
@@ -241,15 +241,15 @@ namespace WhiteCore.CoreApplicationPlugins.RegionModulesController
         {
         }
 
-        public void Initialize(ISimulationBase openSim)
+        public void Initialize(ISimulationBase simBase)
         {
-            m_openSim = openSim;
+            m_simBase = simBase;
 
-            IConfig handlerConfig = openSim.ConfigSource.Configs["ApplicationPlugins"];
+            IConfig handlerConfig = simBase.ConfigSource.Configs["ApplicationPlugins"];
             if (handlerConfig.GetString("RegionModulesControllerPlugin", "") != Name)
                 return;
 
-            m_openSim.ApplicationRegistry.RegisterModuleInterface<IRegionModulesController>(this);
+            m_simBase.ApplicationRegistry.RegisterModuleInterface<IRegionModulesController>(this);
         }
 
         public void ReloadConfiguration(IConfigSource config)

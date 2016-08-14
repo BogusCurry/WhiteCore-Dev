@@ -6,8 +6,8 @@
 namespace RunTimeCompiler
 {
     /// <summary>
-    ///     This class should keep a list of known file extenstions and
-    ///     the registered IProjectReader for each extenstion.
+    ///     This class should keep a list of known file extensions and
+    ///     the registered IProjectReader for each extension.
     ///     When a project file is loaded the ReadProject method is called
     ///     to read that project and get all data needed for the UI and
     ///     compilation.
@@ -45,7 +45,7 @@ namespace RunTimeCompiler
 
         /// <summary>
         ///     This method is used to read the content of a project file and get
-        ///     all the data neededfor UI and compilation.
+        ///     all the data needed for UI and compilation.
         ///     Current implementation always use CsprojReader. It will be changed
         ///     as more project-readers will be developed.
         /// </summary>
@@ -58,8 +58,8 @@ namespace RunTimeCompiler
             //the project or use an other IProjectReader if the current version
             //of .csproj is unknown to CsprojReader.
 
-            //Get the appropiate reader for the filetype.
-            //As filetype is always .csproj i'll just use CsprojReader.
+            //Get the appropriate reader for the filetype.
+            //As filetype is always .csproj I'll just use CsprojReader.
             CsprojReader reader = new CsprojReader();
             //TODO: Decide if this is needed. ReadProject should only be called after CanOpen, 
             //so I may not need to check it again.

@@ -27,26 +27,39 @@
 
 using System;
 using System.Collections.Generic;
-using WhiteCore.Framework;
-using WhiteCore.Framework.Modules;
 using OpenMetaverse;
+using WhiteCore.Framework.Modules;
 
 namespace WhiteCore.BotManager
 {
     public class NodeGraph
     {
-        private readonly object m_lock = new object();
-        public int CurrentPos;
+        readonly object m_lock = new object();
+        int m_currentpos;
 
         /// <summary>
         ///     Loop through the current positions over and over
         /// </summary>
         public bool FollowIndefinitely;
 
-        private DateTime m_lastChangedPosition = DateTime.MinValue;
-        private List<Vector3> m_listOfPositions = new List<Vector3>();
-        private List<TravelMode> m_listOfStates = new List<TravelMode>();
-        private DateTime m_waitingSince = DateTime.MinValue;
+        DateTime m_lastChangedPosition = DateTime.MinValue;
+        List<Vector3> m_listOfPositions = new List<Vector3>();
+        List<TravelMode> m_listOfStates = new List<TravelMode>();
+        DateTime m_waitingSince = DateTime.MinValue;
+
+
+        public int CurrentPos {
+            get {
+                lock (m_lock) {
+                    return m_currentpos;
+                }
+            }
+            set {
+                lock (m_lock) {
+                    m_currentpos = value;
+                }
+            }
+        }
 
         #region Add
 
@@ -71,12 +84,11 @@ namespace WhiteCore.BotManager
         #endregion
 
         #region Clear
-
         public void Clear()
         {
             lock (m_lock)
             {
-                CurrentPos = 0;
+                m_currentpos = 0;
                 m_listOfPositions.Clear();
                 m_listOfStates.Clear();
             }
@@ -84,33 +96,34 @@ namespace WhiteCore.BotManager
 
         #endregion
 
-        public bool GetNextPosition(Vector3 currentPos, float closeToRange, int secondsBeforeForcedTeleport,
+        public bool GetNextPosition(Vector3 currentPosition, float closeToRange, int secondsBeforeForcedTeleport,
                                     out Vector3 position, out TravelMode state, out bool needsToTeleportToPosition)
         {
             const bool found = false;
+
             lock (m_lock)
             {
                 findNewTarget:
                 position = Vector3.Zero;
                 state = TravelMode.None;
                 needsToTeleportToPosition = false;
-                if ((m_listOfPositions.Count - CurrentPos) > 0)
+                if ((m_listOfPositions.Count - m_currentpos) > 0)
                 {
-                    position = m_listOfPositions[CurrentPos];
-                    state = m_listOfStates[CurrentPos];
+                    position = m_listOfPositions[m_currentpos];
+                    state = m_listOfStates[m_currentpos];
                     if (state != TravelMode.Wait && state != TravelMode.TriggerHereEvent &&
-                        position.ApproxEquals(currentPos, closeToRange))
+                        position.ApproxEquals(currentPosition, closeToRange))
                     {
                         //Its close to a position, go look for the next pos
                         //m_listOfPositions.RemoveAt (0);
                         //m_listOfStates.RemoveAt (0);
-                        CurrentPos++;
+                        m_currentpos++;
                         m_lastChangedPosition = DateTime.MinValue;
                         goto findNewTarget;
                     }
                     if (state == TravelMode.TriggerHereEvent)
                     {
-                        CurrentPos++; //Clear for next time, as we only fire this one time
+                        m_currentpos++; //Clear for next time, as we only fire this one time
                         m_lastChangedPosition = DateTime.MinValue;
                     }
                     else if (state == TravelMode.Wait)
@@ -122,7 +135,7 @@ namespace WhiteCore.BotManager
                             if ((DateTime.Now - m_waitingSince).Seconds > position.X)
                             {
                                 m_waitingSince = DateTime.MinValue;
-                                CurrentPos++;
+                                m_currentpos++;
                                 m_lastChangedPosition = DateTime.MinValue;
                                 goto findNewTarget;
                             }
@@ -136,11 +149,14 @@ namespace WhiteCore.BotManager
                     }
                     return true;
                 }
-                if (m_listOfPositions.Count == 0)
+
+                if (m_listOfPositions.Count == 0)          
                     return false;
+
+
                 if (FollowIndefinitely)
                 {
-                    CurrentPos = 0; //Reset the position to the beginning if we have run out of positions
+                    m_currentpos = 0; //Reset the position to the beginning if we have run out of positions
                     goto findNewTarget;
                 }
             }
@@ -152,5 +168,12 @@ namespace WhiteCore.BotManager
             m_listOfPositions = graph.m_listOfPositions;
             m_listOfStates = graph.m_listOfStates;
         }
+
+        public int NodePositions()
+        {
+            return m_listOfPositions.Count;
+        }
+
+
     }
 }

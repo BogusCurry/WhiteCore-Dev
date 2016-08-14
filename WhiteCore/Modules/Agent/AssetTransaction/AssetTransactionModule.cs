@@ -25,29 +25,27 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
+using System;
+using System.Collections.Generic;
+using Nini.Config;
+using OpenMetaverse;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.PresenceInfo;
 using WhiteCore.Framework.SceneInfo;
 using WhiteCore.Framework.Services.ClassHelpers.Inventory;
-using Nini.Config;
-using OpenMetaverse;
-using System;
-using System.Collections.Generic;
 
 namespace WhiteCore.Modules.Agent.AssetTransaction
 {
     public class AssetTransactionModule : INonSharedRegionModule, IAgentAssetTransactions
     {
-//        private static readonly ILog MainConsole.Instance = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         /// <summary>
         ///     Each agent has its own singleton collection of transactions
         /// </summary>
-        private readonly Dictionary<UUID, AgentAssetTransactions> AgentTransactions =
-            new Dictionary<UUID, AgentAssetTransactions>();
+        readonly Dictionary<UUID, AgentAssetTransactions> AgentTransactions =
+            new Dictionary<UUID, AgentAssetTransactions> ();
 
-        private IScene m_scene;
+        IScene m_scene;
 
         //[Obsolete] //As long as this is being used to get objects that are not region specific, this is fine to use
         public IScene MyScene
@@ -109,13 +107,13 @@ namespace WhiteCore.Modules.Agent.AssetTransaction
             client.OnXferReceive += HandleXfer;
         }
 
-        private void OnClosingClient(IClientAPI client)
+        void OnClosingClient (IClientAPI client)
         {
             client.OnAssetUploadRequest -= HandleUDPUploadRequest;
             client.OnXferReceive -= HandleXfer;
         }
 
-        private void OnRemovePresence(IScenePresence SP)
+        void OnRemovePresence (IScenePresence SP)
         {
             if (SP != null && !SP.IsChildAgent)
                 RemoveAgentAssetTransactions(SP.UUID);
@@ -177,7 +175,7 @@ namespace WhiteCore.Modules.Agent.AssetTransaction
         /// <summary>
         ///     Update an inventory item with data that has been received through a transaction.
         ///     This is called when clothing or body parts are updated (for instance, with new textures or
-        ///     colours).  It may also be called in other situations.
+        ///     colors).  It may also be called in other situations.
         /// </summary>
         /// <param name="remoteClient"></param>
         /// <param name="transactionID"></param>
@@ -236,7 +234,7 @@ namespace WhiteCore.Modules.Agent.AssetTransaction
         /// </summary>
         /// <param name="userID"></param>
         /// <returns></returns>
-        private AgentAssetTransactions GetUserTransactions(UUID userID)
+        AgentAssetTransactions GetUserTransactions (UUID userID)
         {
             lock (AgentTransactions)
             {
@@ -265,18 +263,18 @@ namespace WhiteCore.Modules.Agent.AssetTransaction
         {
 //            MainConsole.Instance.Debug("HandleUDPUploadRequest - assetID: " + assetID.ToString() + " transaction: " + transaction.ToString() + " type: " + type.ToString() + " storelocal: " + storeLocal + " tempFile: " + tempFile);
 
-            if (((AssetType) type == AssetType.Texture ||
-                 (AssetType) type == AssetType.Sound ||
-                 (AssetType) type == AssetType.TextureTGA ||
-                 (AssetType) type == AssetType.Animation) &&
-                tempFile == false)
+            if (((AssetType)type == AssetType.Texture ||
+                (AssetType)type == AssetType.Sound ||
+                (AssetType)type == AssetType.TextureTGA ||
+                (AssetType)type == AssetType.Animation) &&
+                !tempFile)
             {
                 IScene scene = remoteClient.Scene;
                 IMoneyModule mm = scene.RequestModuleInterface<IMoneyModule>();
 
                 if (mm != null)
                 {
-                    if (!mm.Charge(remoteClient.AgentId, mm.UploadCharge, "", TransactionType.UploadCharge))
+                    if (!mm.Charge (remoteClient.AgentId, mm.UploadCharge, "Upload asset", TransactionType.UploadCharge))
                     {
                         remoteClient.SendAgentAlertMessage("Unable to upload asset. Insufficient funds.", false);
                         return;

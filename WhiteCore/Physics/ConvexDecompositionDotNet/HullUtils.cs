@@ -29,7 +29,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
+namespace WhiteCore.Physics.ConvexDecompositionDotNet
 {
     public static class HullUtils
     {
@@ -177,7 +177,11 @@ namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
                     t = tris[i];
                 }
             }
-            return (t.rise > epsilon) ? t : null;
+
+            if (t != null && t.rise > epsilon)
+                return t;
+               
+            return null;
         }
 
         public static Quaternion RotationArc(float3 v0, float3 v1)

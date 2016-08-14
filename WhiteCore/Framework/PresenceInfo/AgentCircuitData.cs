@@ -26,10 +26,6 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Net;
-using WhiteCore.Framework.ClientInterfaces;
-using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -92,7 +88,7 @@ namespace WhiteCore.Framework.PresenceInfo
         public uint CircuitCode;
 
         /// <summary>
-        ///     The real child boolean, OpenSim always sends false, so we read this for WhiteCore regions
+        ///     The real child Boolean, OpenSim always sends false, so we read this for WhiteCore regions
         /// </summary>
         [ProtoMember(8)]
         public bool IsChildAgent;

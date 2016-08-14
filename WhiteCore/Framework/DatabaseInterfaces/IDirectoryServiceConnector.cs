@@ -188,6 +188,13 @@ namespace WhiteCore.Framework.DatabaseInterfaces
         /// <returns></returns>
         List<DirClassifiedReplyData> FindClassifieds(string queryText, string category, uint queryFlags, int StartQuery,
                                                      UUID scopeID);
+        /// <summary>
+        /// Gets a lost of all classifieds.
+        /// </summary>
+        /// <returns>The classifieds.</returns>
+        /// <param name="category">Category.</param>
+        /// <param name="classifiedFlags">Classified maturity flags.</param>
+        List<Classified> GetAllClassifieds (int category, uint classifiedFlags);
 
         /// <summary>
         ///     Gets all classifieds in the given region
@@ -196,6 +203,11 @@ namespace WhiteCore.Framework.DatabaseInterfaces
         /// <returns></returns>
         List<Classified> GetClassifiedsInRegion(string regionName);
 
+        /// <summary>
+        /// Gets the classified by identifier.
+        /// </summary>
+        /// <returns>The classified by identifier.</returns>
+        /// <param name="id">Identifier.</param>
         Classified GetClassifiedByID(UUID id);
 
         #endregion
@@ -213,7 +225,15 @@ namespace WhiteCore.Framework.DatabaseInterfaces
         List<DirEventsReplyData> FindEvents(string queryText, uint flags, int StartQuery, UUID scopeID);
 
         /// <summary>
-        ///     Retrives all events in the given region by their maturity level
+        /// Gets all events.
+        /// </summary>
+        /// <returns>The all events.</returns>
+        /// <param name="dayQuery">Day query. 'u' for today or date</param>
+        /// <param name="eventFlags">Event flags.</param>
+        List<EventData> GetAllEvents (string dayQuery, uint eventFlags);
+
+        /// <summary>
+        ///     Retrieves all events in the given region by their maturity level
         /// </summary>
         /// <param name="regionName"></param>
         /// <param name="maturity">Uses DirectoryManager.EventFlags to determine the maturity requested</param>

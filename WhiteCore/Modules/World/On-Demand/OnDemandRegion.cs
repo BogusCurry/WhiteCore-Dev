@@ -27,13 +27,12 @@
 
 using System;
 using System.Collections.Generic;
+using Nini.Config;
+using OpenMetaverse;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.PresenceInfo;
 using WhiteCore.Framework.SceneInfo;
-using Nini.Config;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
-using WhiteCore.Framework;
+
 
 namespace WhiteCore.Modules.OnDemand
 {
@@ -53,11 +52,11 @@ namespace WhiteCore.Modules.OnDemand
     {
         #region Declares
 
-        private readonly List<UUID> m_zombieAgents = new List<UUID>();
-        private bool m_isRunning;
-        private bool m_isShuttingDown;
-        private bool m_isStartingUp;
-        private IScene m_scene;
+        readonly List<UUID> m_zombieAgents = new List<UUID>();
+        bool m_isRunning;
+        bool m_isShuttingDown;
+        bool m_isStartingUp;
+        IScene m_scene;
 
         #endregion
 
@@ -107,7 +106,7 @@ namespace WhiteCore.Modules.OnDemand
 
         #region Private Events
 
-        private object OnGenericEvent(string FunctionName, object parameters)
+        object OnGenericEvent(string FunctionName, object parameters)
         {
             if (FunctionName == "NewUserConnection")
             {
@@ -126,14 +125,14 @@ namespace WhiteCore.Modules.OnDemand
             return null;
         }
 
-        private void OnRemovePresence(IScenePresence presence)
+        void OnRemovePresence(IScenePresence presence)
         {
             if (m_scene.GetScenePresences().Count == 1) //This presence hasn't been removed yet, so we check against one
             {
                 if (m_zombieAgents.Contains(presence.UUID))
                 {
                     m_zombieAgents.Remove(presence.UUID);
-                    return; //It'll be readding an agent, don't kill the sim immediately
+                    return; //It'll be reading an agent, don't kill the sim immediately
                 }
                 //If all clients are out of the region, we can close it again
                 if (m_scene.RegionInfo.Startup == StartupType.Medium)
@@ -149,7 +148,7 @@ namespace WhiteCore.Modules.OnDemand
 
         #region Private Shutdown Methods
 
-        private void MediumShutdown()
+        void MediumShutdown()
         {
             //Only shut down one at a time
             if (m_isShuttingDown)
@@ -162,7 +161,7 @@ namespace WhiteCore.Modules.OnDemand
         /// <summary>
         ///     This shuts down the heartbeats so that everything is dead again
         /// </summary>
-        private void GenericShutdown()
+        void GenericShutdown()
         {
             //After the next iteration, the threads will kill themselves
             m_scene.ShouldRunHeartbeat = false;
@@ -177,7 +176,7 @@ namespace WhiteCore.Modules.OnDemand
         ///     we don't have anything else to load,
         ///     so we just need to get the heartbeats back on track
         /// </summary>
-        private void MediumStartup()
+        void MediumStartup()
         {
             //Only start up one at a time
             if (m_isStartingUp)
@@ -192,7 +191,7 @@ namespace WhiteCore.Modules.OnDemand
         /// <summary>
         ///     This sets up the heartbeats so that they are running again, which is needed
         /// </summary>
-        private void GenericStartup()
+        void GenericStartup()
         {
             m_scene.ShouldRunHeartbeat = true;
             m_scene.StartHeartbeat();

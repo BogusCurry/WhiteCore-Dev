@@ -123,14 +123,14 @@ namespace WhiteCore.Framework.Services
         IAgentInfoService InnerService { get; }
 
         /// <summary>
-        ///     Get the user infos for the given user
+        ///     Get the user info for the given user
         /// </summary>
         /// <param name="userID">The ID of the user to fetch info of</param>
         /// <returns></returns>
         UserInfo GetUserInfo(string userID);
 
         /// <summary>
-        ///     Get the user infos for the given users
+        ///     Get the user info's for the given users
         /// </summary>
         /// <param name="userIDs">A List of IDs for users to fetch info of</param>
         /// <returns></returns>
@@ -204,9 +204,10 @@ namespace WhiteCore.Framework.Services
         UserInfo Get(string userID, bool checkOnlineStatus, out bool onlineStatusChanged);
 
         uint RecentlyOnline(uint secondsAgo, bool stillOnline);
+        uint OnlineUsers (uint secondsAgo);
 
-        List<UserInfo> RecentlyOnline(uint secondsAgo, bool stillOnline, Dictionary<string, bool> sort, uint start,
-                                      uint count);
+        List<UserInfo> RecentlyOnline(uint secondsAgo, bool stillOnline, Dictionary<string, bool> sort);
+        List<UserInfo> CurrentlyOnline(uint secondsAgo, Dictionary<string, bool> sort);
 
         List<UserInfo> GetByCurrentRegion(string regionID);
     }

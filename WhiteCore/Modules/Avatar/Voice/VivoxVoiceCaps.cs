@@ -25,17 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
-using WhiteCore.Framework.ConsoleFramework;
-using WhiteCore.Framework.Modules;
-using WhiteCore.Framework.PresenceInfo;
-using WhiteCore.Framework.SceneInfo;
-using WhiteCore.Framework.Servers.HttpServer;
-using WhiteCore.Framework.Servers.HttpServer.Implementation;
-using WhiteCore.Framework.Services;
-using Nini.Config;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -43,66 +33,76 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using Nini.Config;
+using OpenMetaverse;
+using OpenMetaverse.StructuredData;
+using WhiteCore.Framework.ConsoleFramework;
+using WhiteCore.Framework.Modules;
+using WhiteCore.Framework.Servers.HttpServer;
+using WhiteCore.Framework.Servers.HttpServer.Implementation;
+using WhiteCore.Framework.Services;
+
 
 namespace WhiteCore.Modules
 {
     public class VivoxVoiceService : IVoiceService, IService
     {
         // channel distance model values
-        public const int CHAN_DIST_NONE = 0; // no attenuation
-        public const int CHAN_DIST_INVERSE = 1; // inverse distance attenuation
-        public const int CHAN_DIST_LINEAR = 2; // linear attenuation
+        public const int CHAN_DIST_NONE     = 0; // no attenuation
+        public const int CHAN_DIST_INVERSE  = 1; // inverse distance attenuation
+        public const int CHAN_DIST_LINEAR   = 2; // linear attenuation
         public const int CHAN_DIST_EXPONENT = 3; // exponential attenuation
-        public const int CHAN_DIST_DEFAULT = CHAN_DIST_LINEAR;
+        public const int CHAN_DIST_DEFAULT  = CHAN_DIST_LINEAR;
 
         // channel type values
-        public static readonly string CHAN_TYPE_POSITIONAL = "positional";
-        public static readonly string CHAN_TYPE_CHANNEL = "channel";
-        public static readonly string CHAN_TYPE_DEFAULT = CHAN_TYPE_POSITIONAL;
+        public static readonly string CHAN_TYPE_POSITIONAL   = "positional";
+        public static readonly string CHAN_TYPE_CHANNEL      = "channel";
+        public static readonly string CHAN_TYPE_DEFAULT      = CHAN_TYPE_POSITIONAL;
 
         // channel mode values
-        public static readonly string CHAN_MODE_OPEN = "open";
-        public static readonly string CHAN_MODE_LECTURE = "lecture";
+        public static readonly string CHAN_MODE_OPEN         = "open";
+        public static readonly string CHAN_MODE_LECTURE      = "lecture";
         public static readonly string CHAN_MODE_PRESENTATION = "presentation";
-        public static readonly string CHAN_MODE_AUDITORIUM = "auditorium";
-        public static readonly string CHAN_MODE_DEFAULT = CHAN_MODE_OPEN;
+        public static readonly string CHAN_MODE_AUDITORIUM   = "auditorium";
+        public static readonly string CHAN_MODE_DEFAULT      = CHAN_MODE_OPEN;
 
         // unconstrained default values
-        public const double CHAN_ROLL_OFF_DEFAULT = 2.0; // rate of attenuation
-        public const double CHAN_ROLL_OFF_MIN = 1.0;
-        public const double CHAN_ROLL_OFF_MAX = 4.0;
-        public const int CHAN_MAX_RANGE_DEFAULT = 80; // distance at which channel is silent
-        public const int CHAN_MAX_RANGE_MIN = 0;
-        public const int CHAN_MAX_RANGE_MAX = 160;
-        public const int CHAN_CLAMPING_DISTANCE_DEFAULT = 10; // distance before attenuation applies
-        public const int CHAN_CLAMPING_DISTANCE_MIN = 0;
-        public const int CHAN_CLAMPING_DISTANCE_MAX = 160;
+        public const double CHAN_ROLL_OFF_DEFAULT           = 2.0; // rate of attenuation
+        public const double CHAN_ROLL_OFF_MIN               = 1.0;
+        public const double CHAN_ROLL_OFF_MAX               = 4.0;
+        public const int CHAN_MAX_RANGE_DEFAULT             = 80; // distance at which channel is silent
+        public const int CHAN_MAX_RANGE_MIN                 = 0;
+        public const int CHAN_MAX_RANGE_MAX                 = 160;
+        public const int CHAN_CLAMPING_DISTANCE_DEFAULT     = 10; // distance before attenuation applies
+        public const int CHAN_CLAMPING_DISTANCE_MIN         = 0;
+        public const int CHAN_CLAMPING_DISTANCE_MAX         = 160;
 
-        private static readonly Object vlock = new Object();
+        static readonly Object vlock = new Object();
 
         // Control info, e.g. vivox server, admin user, admin password
-        private static bool m_adminConnected = false;
+        static bool m_adminConnected;
 
-        private static string m_vivoxServer;
-        private static string m_vivoxSipUri;
-        private static string m_vivoxVoiceAccountApi;
-        private static string m_vivoxAdminUser;
-        private static string m_vivoxAdminPassword;
-        private static string m_authToken = String.Empty;
+        static string m_vivoxServer;
+        static string m_vivoxSipUri;
+        static string m_vivoxVoiceAccountApi;
+        static string m_vivoxAdminUser;
+        static string m_vivoxAdminPassword;
+        static string m_authToken = String.Empty;
 
-        private static int m_vivoxChannelDistanceModel;
-        private static double m_vivoxChannelRollOff;
-        private static int m_vivoxChannelMaximumRange;
-        private static string m_vivoxChannelMode;
-        private static string m_vivoxChannelType;
-        private static int m_vivoxChannelClampingDistance;
+        static int m_vivoxChannelDistanceModel;
+        static double m_vivoxChannelRollOff;
+        static int m_vivoxChannelMaximumRange;
+        static string m_vivoxChannelMode;
+        static string m_vivoxChannelType;
+        static int m_vivoxChannelClampingDistance;
 
-        private static Dictionary<string, string> m_parents = new Dictionary<string, string>();
-        private static bool m_dumpXml;
+        static Dictionary<string, string> m_parents = new Dictionary<string, string>();
+        static bool m_dumpXml;
         protected IRegistryCore m_registry;
 
         public void Initialize(IConfigSource config, IRegistryCore registry)
         {
+            
             IConfig voiceconfig = config.Configs["Voice"];
             if (voiceconfig == null)
                 return;
@@ -113,9 +113,24 @@ namespace WhiteCore.Modules
 
             IConfig vivoxConfig = config.Configs["VivoxVoice"];
 
-            if (null == vivoxConfig)
+            if (vivoxConfig == null)
                 return;
 
+            // save for later
+            m_registry = registry;
+
+            // we need to know if the service is local 
+            IConfig wcconf = config.Configs["WhiteCoreConnectors"];
+            if (wcconf == null)
+                return;                             // something major if we don't have this!!
+            if (wcconf.GetBoolean("DoRemoteCalls",false))
+                return;
+
+            MainConsole.Instance.InfoFormat("[VivoxVoice] Using Vivox for voice communications");
+
+            // This is a local service, either grid server or standalone
+            // (region servers do not require the admin configuration)
+            // get and initialise admin configuration for control
             try
             {
                 // retrieve configuration variables
@@ -197,7 +212,7 @@ namespace WhiteCore.Modules
                     String.IsNullOrEmpty(m_vivoxAdminUser) ||
                     String.IsNullOrEmpty(m_vivoxAdminPassword))
                 {
-                    MainConsole.Instance.Error("[VivoxVoice] plugin mis-configured");
+                    MainConsole.Instance.Error("[VivoxVoice] plugin has wrong configuration");
                     MainConsole.Instance.Info("[VivoxVoice] plugin disabled: incomplete configuration");
                     return;
                 }
@@ -205,17 +220,17 @@ namespace WhiteCore.Modules
                 MainConsole.Instance.InfoFormat("[VivoxVoice] using vivox server {0}", m_vivoxServer);
 
                 // Get admin rights and cleanup any residual channel definition
-
                 DoAdminLogin();
-
+                 
+                // if we get here then all is well
                 MainConsole.Instance.Info("[VivoxVoice]: plugin enabled");
 
                 registry.RegisterModuleInterface<IVoiceService>(this);
-                m_registry = registry;
-            }
+                
+             }
             catch (Exception e)
             {
-                MainConsole.Instance.ErrorFormat("[VivoxVoice] plugin initialization failed: {0}", e.ToString());
+                MainConsole.Instance.ErrorFormat("[VivoxVoice] plugin initialization failed: {0}", e);
             }
         }
 
@@ -240,7 +255,7 @@ namespace WhiteCore.Modules
             bool retry = false;
             agentname = "x" + Convert.ToBase64String(regionClient.AgentID.GetBytes());
             password = new UUID(Guid.NewGuid()).ToString().Replace('-', 'Z').Substring(0, 16);
-            string code = String.Empty;
+            string code;
 
             agentname = agentname.Replace('+', '-').Replace('/', '_');
 
@@ -327,7 +342,8 @@ namespace WhiteCore.Modules
 
                                 case "404": // Failed to retrieve account
                                     MainConsole.Instance.ErrorFormat(
-                                        "[VivoxVoice]: avatar \"{0}\": Get account information failed : retrieve failed");
+                                        "[VivoxVoice]: avatar \"{0}\": Get account information failed : retrieve failed",
+                                        regionClient.ClientCaps.AccountInfo.Name);
                                     // [AMW] Sleep and retry for a fixed period? Or just abandon?
                                     break;
                             }
@@ -366,9 +382,10 @@ namespace WhiteCore.Modules
             if (success)
                 channel_uri = RegionGetOrCreateChannel(user.CurrentRegionID, regionClient.Region.RegionName, parcelID,
                                                        parcelName, localID, parcelFlags, ParentID);
+
         }
 
-        public void GetParcelChannelInfo(UUID avatarID, WhiteCore.Framework.Services.GridRegion region, string URL,
+        public void GetParcelChannelInfo(UUID avatarID, Framework.Services.GridRegion region, string URL,
                                          out bool success, out UUID parcelID, out string parcelName, out int localID,
                                          out uint parcelFlags, out string ParentID)
         {
@@ -376,22 +393,34 @@ namespace WhiteCore.Modules
             OSDMap request = new OSDMap();
             request["AvatarID"] = avatarID;
             request["Method"] = "GetParcelChannelInfo";
+            request ["RegionName"] = region.RegionName;
             OSDMap response = null;
             syncPoster.Get(URL, request, resp => { response = resp; });
             while (response == null)
-                Thread.Sleep(5);
+                Thread.Sleep (5);
 
             success = response["Success"];
-            if (response["NoAgent"])
-                throw new NotSupportedException();
-            parcelID = response["ParcelID"];
-            parcelName = response["ParcelName"];
-            localID = response["LocalID"];
-            parcelFlags = response["ParcelFlags"];
-            ParentID = GetParentIDForRegion(region);
+            bool noAgents = response ["NoAgent"];
+            if (!success || noAgents)
+            {
+                // parcel is not voice enabled or there are no agents here
+                parcelID = UUID.Zero;
+                parcelName = "";
+                localID = 0;
+                parcelFlags = 0;
+                ParentID = "";
+            } else
+            {
+                // set parcel details
+                parcelID = response ["ParcelID"];
+                parcelName = response ["ParcelName"];
+                localID = response ["LocalID"];
+                parcelFlags = response ["ParcelFlags"];
+                ParentID = GetParentIDForRegion (region);
+            }
         }
 
-        private string GetParentIDForRegion(WhiteCore.Framework.Services.GridRegion region)
+        string GetParentIDForRegion(Framework.Services.GridRegion region)
         {
             lock (vlock)
             {
@@ -406,7 +435,7 @@ namespace WhiteCore.Modules
 
                 // Make sure that all local channels are deleted.
                 // So we have to search for the children, and then do an
-                // iteration over the set of chidren identified.
+                // iteration over the set of children identified.
                 // This assumes that there is just one directory per
                 // region.
 
@@ -419,8 +448,7 @@ namespace WhiteCore.Modules
                     XmlElement children = VivoxListChildren(channelId);
                     string count;
 
-                    if (XmlFind(children, "response.level0.channel-search.count",
-                                out count))
+                    if ( XmlFind(children, "response.level0.channel-search.count", out count) )
                     {
                         int cnum = Convert.ToInt32(count);
                         for (int i = 0; i < cnum; i++)
@@ -440,9 +468,7 @@ namespace WhiteCore.Modules
                 }
                 else
                 {
-                    if (
-                        !VivoxTryCreateDirectory(sceneUUID + "D", sceneName,
-                                                 out channelId))
+                    if ( !VivoxTryCreateDirectory(sceneUUID + "D", sceneName, out channelId) )
                     {
                         MainConsole.Instance.WarnFormat(
                             "[VivoxVoice] Create failed <{0}:{1}:{2}>",
@@ -464,11 +490,11 @@ namespace WhiteCore.Modules
             }
         }
 
-        private string RegionGetOrCreateChannel(UUID regionID, string regionName, UUID parcelID, string parcelName,
+         string RegionGetOrCreateChannel(UUID regionID, string regionName, UUID parcelID, string parcelName,
                                                 int localID, uint parcelFlags, string voiceParentID)
         {
-            string channelUri = null;
-            string channelId = null;
+            string channelUri;
+            string channelId;
 
             string landUUID;
             string landName;
@@ -478,7 +504,7 @@ namespace WhiteCore.Modules
 
             if (localID != 1 && (parcelFlags & (uint) ParcelFlags.UseEstateVoiceChan) == 0)
             {
-                landName = String.Format("{0}:{1}", regionName, parcelName);
+                landName = string.Format("{0}:{1}", regionName, parcelName);
                 landUUID = parcelID.ToString();
                 MainConsole.Instance.TraceFormat(
                     "[VivoxVoice]: Region:Parcel \"{0}\": parcel id {1}: using channel name {2}",
@@ -486,7 +512,7 @@ namespace WhiteCore.Modules
             }
             else
             {
-                landName = String.Format("{0}:{1}", regionName, regionName);
+                landName = string.Format("{0}:{1}", regionName, "Full");        // 20160505 -greythane - was regionName:regionName 
                 landUUID = regionID.ToString();
                 MainConsole.Instance.TraceFormat(
                     "[VivoxVoice]: Region:Parcel \"{0}\": parcel id {1}: using channel name {2}",
@@ -495,11 +521,11 @@ namespace WhiteCore.Modules
 
             lock (vlock)
             {
-                // Added by Adam to help debug channel not availible errors.
+                // Added by Adam to help debug channel not available errors.
                 if (VivoxTryGetChannel(voiceParentID, landUUID, out channelId, out channelUri))
                     MainConsole.Instance.DebugFormat("[VivoxVoice] Found existing channel at " + channelUri);
                 else if (VivoxTryCreateChannel(voiceParentID, landUUID, landName, out channelUri))
-                    MainConsole.Instance.DebugFormat("[VivoxVoice] Created new channel at " + channelUri);
+                    MainConsole.Instance.InfoFormat("[VivoxVoice] Created new channel at {0} for {1}", channelUri, regionName);
                 else
                     throw new Exception("vivox channel uri not available");
 
@@ -517,7 +543,7 @@ namespace WhiteCore.Modules
             map["session_id"] = sessionid;
             OSDMap voice_credentials = new OSDMap();
 
-            string channelID = "Conff" + sessionid.ToString();
+            string channelID = "Conff" + sessionid;
             string channelUri, parentID;
             lock (vlock)
             {
@@ -529,7 +555,7 @@ namespace WhiteCore.Modules
                 // Added by Adam to help debug channel not availible errors.
                 if (VivoxTryGetChannel(parentID, channelID, out channelID, out channelUri))
                     MainConsole.Instance.DebugFormat("[VivoxVoice] Found existing channel at " + channelUri);
-                else if (VivoxTryCreateChannel(parentID, "Conff" + sessionid.ToString(), "Conff" + sessionid.ToString(),
+                else if (VivoxTryCreateChannel(parentID, "Conff" + sessionid, "Conff" + sessionid,
                                                out channelUri))
                     MainConsole.Instance.DebugFormat("[VivoxVoice] Created new channel at " + channelUri);
                 else
@@ -556,46 +582,46 @@ namespace WhiteCore.Modules
 
         #region Vivox Calls
 
-        private static readonly string m_vivoxLoginPath = "http://{0}/api2/viv_signin.php?userid={1}&pwd={2}";
+        static readonly string m_vivoxLoginPath = "http://{0}/api2/viv_signin.php?userid={1}&pwd={2}";
 
         /// <summary>
         ///     Perform administrative login for Vivox.
         ///     Returns a hash table containing values returned from the request.
         /// </summary>
-        private XmlElement VivoxLogin(string name, string password)
+        XmlElement VivoxLogin(string name, string password)
         {
             string requrl = String.Format(m_vivoxLoginPath, m_vivoxServer, name, password);
             return VivoxCall(requrl, false);
         }
 
 
-        private static readonly string m_vivoxLogoutPath = "http://{0}/api2/viv_signout.php?auth_token={1}";
+        static readonly string m_vivoxLogoutPath = "http://{0}/api2/viv_signout.php?auth_token={1}";
 
         /// <summary>
         ///     Perform administrative logout for Vivox.
         /// </summary>
-        private XmlElement VivoxLogout()
+        XmlElement VivoxLogout()
         {
             string requrl = String.Format(m_vivoxLogoutPath, m_vivoxServer, m_authToken);
             return VivoxCall(requrl, false);
         }
 
 
-        private static readonly string m_vivoxGetAccountPath =
+        static readonly string m_vivoxGetAccountPath =
             "http://{0}/api2/viv_get_acct.php?auth_token={1}&user_name={2}";
 
         /// <summary>
         ///     Retrieve account information for the specified user.
         ///     Returns a hash table containing values returned from the request.
         /// </summary>
-        private XmlElement VivoxGetAccountInfo(string user)
+        XmlElement VivoxGetAccountInfo(string user)
         {
             string requrl = String.Format(m_vivoxGetAccountPath, m_vivoxServer, m_authToken, user);
             return VivoxCall(requrl, true);
         }
 
 
-        private static readonly string m_vivoxNewAccountPath =
+        static readonly string m_vivoxNewAccountPath =
             "http://{0}/api2/viv_adm_acct_new.php?username={1}&pwd={2}&auth_token={3}";
 
         /// <summary>
@@ -604,27 +630,27 @@ namespace WhiteCore.Modules
         ///     is user name and password. We *can* supply a lot more
         ///     demographic data.
         /// </summary>
-        private XmlElement VivoxCreateAccount(string user, string password)
+        XmlElement VivoxCreateAccount(string user, string password)
         {
             string requrl = String.Format(m_vivoxNewAccountPath, m_vivoxServer, user, password, m_authToken);
             return VivoxCall(requrl, true);
         }
 
 
-        private static readonly string m_vivoxPasswordPath =
+        static readonly string m_vivoxPasswordPath =
             "http://{0}/api2/viv_adm_password.php?user_name={1}&new_pwd={2}&auth_token={3}";
 
         /// <summary>
         ///     Change the user's password.
         /// </summary>
-        private XmlElement VivoxPassword(string user, string password)
+        XmlElement VivoxPassword(string user, string password)
         {
             string requrl = String.Format(m_vivoxPasswordPath, m_vivoxServer, user, password, m_authToken);
             return VivoxCall(requrl, true);
         }
 
 
-        private static readonly string m_vivoxChannelPath =
+        static readonly string m_vivoxChannelPath =
             "http://{0}/api2/viv_chan_mod.php?mode={1}&chan_name={2}&auth_token={3}";
 
         /// <summary>
@@ -632,13 +658,13 @@ namespace WhiteCore.Modules
         ///     Once again, there a multitude of options possible. In the simplest case
         ///     we specify only the name and get a non-persistent cannel in return. Non
         ///     persistent means that the channel gets deleted if no-one uses it for
-        ///     5 hours. To accomodate future requirements, it may be a good idea to
+        ///     5 hours. To accommodate future requirements, it may be a good idea to
         ///     initially create channels under the umbrella of a parent ID based upon
         ///     the region name. That way we have a context for side channels, if those
         ///     are required in a later phase.
         ///     In this case the call handles parent and description as optional values.
         /// </summary>
-        private bool VivoxTryCreateChannel(string parent, string channelId, string description, out string channelUri)
+        bool VivoxTryCreateChannel(string parent, string channelId, string description, out string channelUri)
         {
             string requrl = String.Format(m_vivoxChannelPath, m_vivoxServer, "create", channelId, m_authToken);
 
@@ -673,7 +699,7 @@ namespace WhiteCore.Modules
         ///     channel name space.
         ///     The parent and description are optional values.
         /// </summary>
-        private bool VivoxTryCreateDirectory(string dirId, string description, out string channelId)
+        bool VivoxTryCreateDirectory(string dirId, string description, out string channelId)
         {
             string requrl = String.Format(m_vivoxChannelPath, m_vivoxServer, "create", dirId, m_authToken);
 
@@ -696,7 +722,7 @@ namespace WhiteCore.Modules
             return false;
         }
 
-        private static readonly string m_vivoxChannelSearchPath =
+        static readonly string m_vivoxChannelSearchPath =
             "http://{0}/api2/viv_chan_search.php?cond_channame={1}&auth_token={2}";
 
         /// <summary>
@@ -704,13 +730,13 @@ namespace WhiteCore.Modules
         ///     Once again, there a multitude of options possible. In the simplest case
         ///     we specify only the name and get a non-persistent cannel in return. Non
         ///     persistent means that the channel gets deleted if no-one uses it for
-        ///     5 hours. To accomodate future requirements, it may be a good idea to
+        ///     5 hours. To accommodate future requirements, it may be a good idea to
         ///     initially create channels under the umbrella of a parent ID based upon
         ///     the region name. That way we have a context for side channels, if those
         ///     are required in a later phase.
         ///     In this case the call handles parent and description as optional values.
         /// </summary>
-        private bool VivoxTryGetChannel(string channelParent, string channelName,
+        bool VivoxTryGetChannel(string channelParent, string channelName,
                                         out string channelId, out string channelUri)
         {
             string count;
@@ -765,7 +791,7 @@ namespace WhiteCore.Modules
                         !XmlFind(resp, "response.level0.channel-search.channels.channels.level4.parent", i, out parent))
                     {
                         MainConsole.Instance.Debug("[VivoxVoice] Skipping Channel " + i + "/" + name +
-                                                   " as it's parent doesnt match");
+                                                   " as it's parent doesn't match");
                         continue;
                     }
 
@@ -805,7 +831,7 @@ namespace WhiteCore.Modules
             return false;
         }
 
-        private bool VivoxTryGetDirectory(string directoryName, out string directoryId)
+        bool VivoxTryGetDirectory(string directoryName, out string directoryId)
         {
             string count;
 
@@ -844,9 +870,9 @@ namespace WhiteCore.Modules
             return false;
         }
 
-        // private static readonly string m_vivoxChannelById = "http://{0}/api2/viv_chan_mod.php?mode={1}&chan_id={2}&auth_token={3}";
+        // static readonly string m_vivoxChannelById = "http://{0}/api2/viv_chan_mod.php?mode={1}&chan_id={2}&auth_token={3}";
 
-        // private XmlElement VivoxGetChannelById(string parent, string channelid)
+        // XmlElement VivoxGetChannelById(string parent, string channelid)
         // {
         //     string requrl = String.Format(m_vivoxChannelById, m_vivoxServer, "get", channelid, m_authToken);
 
@@ -861,16 +887,16 @@ namespace WhiteCore.Modules
         ///     Once again, there a multitude of options possible. In the simplest case
         ///     we specify only the name and get a non-persistent cannel in return. Non
         ///     persistent means that the channel gets deleted if no-one uses it for
-        ///     5 hours. To accomodate future requirements, it may be a good idea to
+        ///     5 hours. To accommodate future requirements, it may be a good idea to
         ///     initially create channels under the umbrella of a parent ID based upon
         ///     the region name. That way we have a context for side channels, if those
         ///     are required in a later phase.
         ///     In this case the call handles parent and description as optional values.
         /// </summary>
-        private static readonly string m_vivoxChannelDel =
+        static readonly string m_vivoxChannelDel =
             "http://{0}/api2/viv_chan_mod.php?mode={1}&chan_id={2}&auth_token={3}";
 
-        private XmlElement VivoxDeleteChannel(string parent, string channelid)
+        XmlElement VivoxDeleteChannel(string parent, string channelid)
         {
             string requrl = String.Format(m_vivoxChannelDel, m_vivoxServer, "delete", channelid, m_authToken);
             if (!string.IsNullOrEmpty(parent))
@@ -883,16 +909,16 @@ namespace WhiteCore.Modules
         /// <summary>
         ///     Return information on channels in the given directory
         /// </summary>
-        private static readonly string m_vivoxChannelSearch =
+        static readonly string m_vivoxChannelSearch =
             "http://{0}/api2/viv_chan_search.php?&cond_chanparent={1}&auth_token={2}";
 
-        private XmlElement VivoxListChildren(string channelid)
+        XmlElement VivoxListChildren(string channelid)
         {
             string requrl = String.Format(m_vivoxChannelSearch, m_vivoxServer, channelid, m_authToken);
             return VivoxCall(requrl, true);
         }
 
-        // private XmlElement VivoxGetChild(string parent, string child)
+        // XmlElement VivoxGetChild(string parent, string child)
         // {
 
         //     XmlElement children = VivoxListChildren(parent);
@@ -925,14 +951,14 @@ namespace WhiteCore.Modules
 
         /// <summary>
         ///     This method handles the WEB side of making a request over the
-        ///     Vivox interface. The returned values are tansferred to a has
+        ///     Vivox interface. The returned values are transferred to a hash
         ///     table which is returned as the result.
         ///     The outcome of the call can be determined by examining the
         ///     status value in the hash table.
         /// </summary>
-        private XmlElement VivoxCall(string requrl, bool admin)
+        XmlElement VivoxCall(string requrl, bool admin)
         {
-            XmlDocument doc = null;
+            XmlDocument doc;
 
             // If this is an admin call, and admin is not connected,
             // and the admin id cannot be connected, then fail.
@@ -947,17 +973,24 @@ namespace WhiteCore.Modules
                 MainConsole.Instance.TraceFormat("[VivoxVoice] Sending request <{0}>", requrl);
 
                 HttpWebRequest req = (HttpWebRequest) WebRequest.Create(requrl);
-                HttpWebResponse rsp = null;
+                HttpWebResponse rsp;
 
                 // We are sending just parameters, no content
                 req.ContentLength = 0;
 
                 // Send request and retrieve the response
                 rsp = (HttpWebResponse) req.GetResponse();
-
-                XmlTextReader rdr = new XmlTextReader(rsp.GetResponseStream());
-                doc.Load(rdr);
-                rdr.Close();
+                XmlTextReader rdr = null;
+                try {
+                    rdr = new XmlTextReader (rsp.GetResponseStream ());
+                    doc.Load (rdr);
+                    rdr.Close ();
+                } catch {
+                    if (rdr != null)
+                        rdr.Close ();
+                }
+                rsp.Close ();
+                
             }
             catch (Exception e)
             {
@@ -974,7 +1007,7 @@ namespace WhiteCore.Modules
         /// <summary>
         ///     Just say if it worked.
         /// </summary>
-        private bool IsOK(XmlElement resp)
+        bool IsOK(XmlElement resp)
         {
             string status;
             XmlFind(resp, "response.level0.status", out status);
@@ -986,7 +1019,7 @@ namespace WhiteCore.Modules
         ///     from several places in the module, and we want it to work
         ///     the same way each time.
         /// </summary>
-        private bool DoAdminLogin()
+        bool DoAdminLogin()
         {
             MainConsole.Instance.Debug("[VivoxVoice] Establishing admin connection");
 
@@ -994,8 +1027,8 @@ namespace WhiteCore.Modules
             {
                 if (!m_adminConnected)
                 {
-                    string status = "Unknown";
-                    XmlElement resp = null;
+                    string status;
+                    XmlElement resp;
 
                     resp = VivoxLogin(m_vivoxAdminUser, m_vivoxAdminPassword);
 
@@ -1031,7 +1064,7 @@ namespace WhiteCore.Modules
         ///     voice server. It is only called if the
         ///     m_dumpXml switch is set.
         /// </summary>
-        private void XmlScanl(XmlElement e, int index)
+        void XmlScanl(XmlElement e, int index)
         {
             if (e.HasChildNodes)
             {
@@ -1055,7 +1088,7 @@ namespace WhiteCore.Modules
             }
         }
 
-        private static readonly char[] C_POINT = {'.'};
+        static readonly char[] C_POINT = {'.'};
 
         /// <summary>
         ///     The Find method is passed an element whose
@@ -1063,12 +1096,12 @@ namespace WhiteCore.Modules
         ///     the name hierarchy passed in the 'tag' parameter.
         ///     If the whole hierarchy is resolved, the InnerText
         ///     value at that point is returned. Note that this
-        ///     may itself be a subhierarchy of the entire
-        ///     document. The function returns a boolean indicator
+        ///     may itself be a sub-hierarchy of the entire
+        ///     document. The function returns a Boolean indicator
         ///     of the search's success. The search is performed
         ///     by the recursive Search method.
         /// </summary>
-        private bool XmlFind(XmlElement root, string tag, int nth, out string result)
+        bool XmlFind(XmlElement root, string tag, int nth, out string result)
         {
             if (root == null || tag == null || tag == String.Empty)
             {
@@ -1078,7 +1111,7 @@ namespace WhiteCore.Modules
             return XmlSearch(root, tag.Split(C_POINT), 0, ref nth, out result);
         }
 
-        private bool XmlFind(XmlElement root, string tag, out string result)
+        bool XmlFind(XmlElement root, string tag, out string result)
         {
             int nth = 0;
             if (root == null || tag == null || tag == String.Empty)
@@ -1099,7 +1132,7 @@ namespace WhiteCore.Modules
         ///     value. Otherwise the result is set to the empty string and
         ///     false is returned.
         /// </summary>
-        private bool XmlSearch(XmlElement e, string[] tags, int index, ref int nth, out string result)
+        bool XmlSearch(XmlElement e, string[] tags, int index, ref int nth, out string result)
         {
             if (index == tags.Length || e.Name != tags[index])
             {
@@ -1114,12 +1147,10 @@ namespace WhiteCore.Modules
                     result = e.InnerText;
                     return true;
                 }
-                else
-                {
-                    nth--;
-                    result = String.Empty;
-                    return false;
-                }
+
+                nth--;
+                result = String.Empty;
+                return false;
             }
 
             if (e.HasChildNodes)
@@ -1199,7 +1230,7 @@ namespace WhiteCore.Modules
             }
             catch (Exception e)
             {
-                MainConsole.Instance.ErrorFormat("[VivoxVoice][PROVISIONVOICE]: : {0}, retry later", e.ToString());
+                MainConsole.Instance.ErrorFormat("[VivoxVoice][PROVISIONVOICE]: : {0}, retry later", e);
                 return Encoding.UTF8.GetBytes("<llsd><undef /></llsd>");
             }
         }
@@ -1235,7 +1266,7 @@ namespace WhiteCore.Modules
             {
                 MainConsole.Instance.ErrorFormat(
                     "[VivoxVoice][PARCELVOICE]: region \"{0}\": avatar \"{1}\": {2}, retry later",
-                    m_service.Region.RegionName, m_service.ClientCaps.AccountInfo.Name, e.ToString());
+                    m_service.Region.RegionName, m_service.ClientCaps.AccountInfo.Name, e);
 
                 return Encoding.UTF8.GetBytes("<llsd><undef /></llsd>");
             }

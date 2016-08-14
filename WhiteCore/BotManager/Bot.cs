@@ -25,7 +25,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Timers;
+using OpenMetaverse;
+using OpenMetaverse.Packets;
+using WhiteCore.BotManager.AStar;
 using WhiteCore.Framework.ClientInterfaces;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
@@ -36,20 +43,11 @@ using WhiteCore.Framework.SceneInfo.Entities;
 using WhiteCore.Framework.Services.ClassHelpers.Inventory;
 using WhiteCore.Framework.Services.ClassHelpers.Other;
 using WhiteCore.Framework.Utilities;
-using Games.Pathfinding.AStar2DTest;
-using OpenMetaverse;
-using OpenMetaverse.Packets;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Timers;
 
 namespace WhiteCore.BotManager
 {
-
+    
     #region Enums
-
     public enum BotState
     {
         Idle,
@@ -70,9 +68,9 @@ namespace WhiteCore.BotManager
 
     public class BotAvatarController : IBotController
     {
-        private IScenePresence m_scenePresence;
-        private Bot m_bot;
-        private bool m_hasStoppedMoving = false;
+        IScenePresence m_scenePresence;
+        Bot m_bot;
+        bool m_hasStoppedMoving;
 
         public BotAvatarController(IScenePresence presence, Bot bot)
         {
@@ -99,22 +97,27 @@ namespace WhiteCore.BotManager
             get { return m_scenePresence.AbsolutePosition; }
         }
 
-        // Makes the bot fly to the specified destination
+        // Makes the bot stop walk/fly to the specified destination
         public void StopMoving(bool fly, bool clearPath)
         {
             if (m_hasStoppedMoving)
                 return;
             m_hasStoppedMoving = true;
             m_bot.State = BotState.Idle;
+
             //Clear out any nodes
             if (clearPath)
                 m_bot.m_nodeGraph.Clear();
+
             //Send the stop message
             m_bot.m_movementFlag = (uint) AgentManager.ControlFlags.NONE;
+
             if (fly)
                 m_bot.m_movementFlag |= (uint) AgentManager.ControlFlags.AGENT_CONTROL_FLY;
+
             OnBotAgentUpdate(Vector3.Zero, m_bot.m_movementFlag, m_bot.m_bodyDirection, false);
             m_scenePresence.CollisionPlane = Vector4.UnitW;
+
             if (m_scenePresence.PhysicsActor != null)
                 m_scenePresence.PhysicsActor.ForceSetVelocity(Vector3.Zero);
         }
@@ -170,6 +173,7 @@ namespace WhiteCore.BotManager
         {
             if (isMoving)
                 m_hasStoppedMoving = false;
+
             AgentUpdateArgs pack = new AgentUpdateArgs {ControlFlags = controlFlag, BodyRotation = bodyRotation};
             m_scenePresence.ControllingClient.ForceSendOnAgentUpdate(m_scenePresence.ControllingClient, pack);
         }
@@ -244,16 +248,18 @@ namespace WhiteCore.BotManager
     public sealed class Bot : IDisposable
     {
         #region Declares
+        static readonly object _lock = new object();
+        readonly float EPSILON = (float) Constants.FloatDifference;
+
+        IBotController m_controller;
 
         public bool m_allowJump = true;
         public bool m_UseJumpDecisionTree = true;
 
         public bool m_paused;
-
         public uint m_movementFlag;
         public Quaternion m_bodyDirection = Quaternion.Identity;
 
-        private IBotController m_controller;
 
         public IBotController Controller
         {
@@ -262,7 +268,7 @@ namespace WhiteCore.BotManager
 
         /// <summary>
         ///     There are several events added so far,
-        ///     Update - called every 0.1s, allows for updating of the position of where the avatar is supposed to be goign
+        ///     Update - called every 0.1s, allows for updating of the position of where the avatar is supposed to be going
         ///     Move - called every 10ms, allows for subtle changes and fast callbacks before the avatar moves toward its next location
         ///     ToAvatar - a following event, called when the bot is within range of the avatar (range = m_followCloseToPoint)
         ///     LostAvatar - a following event, called when the bot is out of the maximum range to look for its avatar (range = m_followLoseAvatarDistance)
@@ -311,7 +317,7 @@ namespace WhiteCore.BotManager
 
         #region IClientAPI properties
 
-        private UUID m_avatarCreatorID = UUID.Zero;
+        UUID m_avatarCreatorID = UUID.Zero;
 
         public UUID AvatarCreatorID
         {
@@ -324,7 +330,7 @@ namespace WhiteCore.BotManager
 
         public readonly NodeGraph m_nodeGraph = new NodeGraph();
 
-        private float m_RexCharacterSpeedMod = 1.0f;
+        float m_RexCharacterSpeedMod = 1.0f;
 
         public float RexCharacterSpeedMod
         {
@@ -338,9 +344,9 @@ namespace WhiteCore.BotManager
 
         #region Initialize/Close
 
-        public void Initialize(IScenePresence SP, UUID creatorID)
+        public void Initialize(IScenePresence presence, UUID creatorID)
         {
-            m_controller = new BotAvatarController(SP, this);
+            m_controller = new BotAvatarController(presence, this);
             m_controller.SetDrawDistance(1024f);
             m_avatarCreatorID = creatorID;
             m_frames = new Timer(10);
@@ -370,7 +376,7 @@ namespace WhiteCore.BotManager
 
         #region SetPath
 
-        public void SetPath(List<Vector3> Positions, List<TravelMode> modes, int flags)
+        public void SetPath(List<Vector3> positions, List<TravelMode> modes, int flags)
         {
             m_nodeGraph.Clear();
             const int BOT_FOLLOW_FLAG_INDEFINITELY = 1;
@@ -378,7 +384,7 @@ namespace WhiteCore.BotManager
 
             m_nodeGraph.FollowIndefinitely = (flags & BOT_FOLLOW_FLAG_INDEFINITELY) == BOT_FOLLOW_FLAG_INDEFINITELY;
             m_forceDirectFollowing = (flags & BOT_FOLLOW_FLAG_FORCEDIRECTPATH) == BOT_FOLLOW_FLAG_FORCEDIRECTPATH;
-            m_nodeGraph.AddRange(Positions, modes);
+            m_nodeGraph.AddRange(positions, modes);
             GetNextDestination();
         }
 
@@ -409,7 +415,7 @@ namespace WhiteCore.BotManager
         // Makes the bot fly to the specified destination
         public void FlyTo(Vector3 destination)
         {
-            if (Util.IsZeroVector(destination - m_controller.AbsolutePosition) == false)
+            if (!Util.IsZeroVector(destination - m_controller.AbsolutePosition))
             {
                 flyTo(destination);
                 State = BotState.Flying;
@@ -424,7 +430,7 @@ namespace WhiteCore.BotManager
             }
         }
 
-        private void RotateTo(Vector3 destination)
+        void RotateTo(Vector3 destination)
         {
             Vector3 bot_forward = new Vector3(1, 0, 0);
             if (destination - m_controller.AbsolutePosition != Vector3.Zero)
@@ -441,12 +447,12 @@ namespace WhiteCore.BotManager
 
         #region rotation helper functions
 
-        private Vector3 llRot2Fwd(Quaternion r)
+        Vector3 llRot2Fwd(Quaternion r)
         {
             return (new Vector3(1, 0, 0)*r);
         }
 
-        private Quaternion llRotBetween(Vector3 a, Vector3 b)
+        Quaternion llRotBetween(Vector3 a, Vector3 b)
         {
             //A and B should both be normalized
             double dotProduct = Vector3.Dot(a, b);
@@ -467,7 +473,7 @@ namespace WhiteCore.BotManager
         ///     Does the actual movement of the bot
         /// </summary>
         /// <param name="pos"></param>
-        private void walkTo(Vector3 pos)
+        void walkTo(Vector3 pos)
         {
             Vector3 bot_forward = new Vector3(2, 0, 0);
             Vector3 bot_toward = Vector3.Zero;
@@ -498,7 +504,7 @@ namespace WhiteCore.BotManager
         ///     Does the actual movement of the bot
         /// </summary>
         /// <param name="pos"></param>
-        private void flyTo(Vector3 pos)
+        void flyTo(Vector3 pos)
         {
             Vector3 bot_forward = new Vector3(1, 0, 0), bot_toward = Vector3.Zero;
             if (pos - m_controller.AbsolutePosition != Vector3.Zero)
@@ -555,7 +561,7 @@ namespace WhiteCore.BotManager
         /// <param name="start"></param>
         /// <param name="end"></param>
         /// <returns></returns>
-        private bool JumpDecisionTree(Vector3 start, Vector3 end)
+        bool JumpDecisionTree(Vector3 start, Vector3 end)
         {
             //Cast a ray in the direction that we are going
             List<ISceneChildEntity> entities = llCastRay(start, end);
@@ -581,7 +587,7 @@ namespace WhiteCore.BotManager
                                                                                  5);
 
             double distance = Util.GetDistanceTo(startvector, endvector);
-            if (distance == 0)
+            if (distance < 0.001)
                 distance = 0.001;
             foreach (ContactResult result in results)
             {
@@ -626,7 +632,7 @@ namespace WhiteCore.BotManager
 
         #region Timers
 
-        private void frame_Elapsed(object sender, ElapsedEventArgs e)
+        void frame_Elapsed(object sender, ElapsedEventArgs e)
         {
             m_frames.Stop();
             if (m_controller == null)
@@ -661,7 +667,7 @@ namespace WhiteCore.BotManager
                 m_controller.StopMoving(lastFlying, false);
                 return;
             }
-
+                
             Vector3 pos;
             TravelMode state;
             bool teleport;
@@ -727,15 +733,15 @@ namespace WhiteCore.BotManager
         public List<Vector3> InnerFindPath(int[,] map, int startX, int startY, int finishX, int finishY)
         {
             StartPath.Map = map;
-            StartPath.xLimit = (int) Math.Sqrt(map.Length);
-            StartPath.yLimit = (int) Math.Sqrt(map.Length);
+            StartPath.XLimit = (int) Math.Sqrt(map.Length);
+            StartPath.YLimit = (int) Math.Sqrt(map.Length);
             //ShowMap ("", null);
             List<string> points = StartPath.Path(startX, startY, finishX, finishY, 0, 0, 0);
 
             List<Vector3> waypoints = new List<Vector3>();
             if (points.Contains("no_path"))
             {
-                MainConsole.Instance.Debug("I'm sorry I could not find a solution to that path. Teleporting instead");
+                MainConsole.Instance.Warn("I'm sorry I could not find a solution to that path. Teleporting instead");
                 return waypoints;
             }
 
@@ -757,12 +763,13 @@ namespace WhiteCore.BotManager
         public Vector3 FollowOffset;
         public bool FollowRequiresLOS = false;
         public UUID FollowUUID = UUID.Zero;
-        private float m_StopFollowDistance = 2f;
-        private float m_StartFollowDistance = 3f;
-        private float m_followLoseAvatarDistance = 1000;
-        private const float FollowTimeBeforeUpdate = 10;
-        private int jumpTry;
-        private bool m_lostAvatar;
+
+        float m_StopFollowDistance = 2f;
+        float m_StartFollowDistance = 3f;
+        float m_followLoseAvatarDistance = 1000;
+        const float FollowTimeBeforeUpdate = 10;
+        int jumpTry;
+        bool m_lostAvatar;
 
         public float StartFollowDistance
         {
@@ -831,14 +838,14 @@ namespace WhiteCore.BotManager
 
         #region Following Update Event
 
-        private object FollowingUpdate(string functionName, object param)
+        object FollowingUpdate(string functionName, object param)
         {
             //Update, time to check where we should be going
             FollowDecision();
             return null;
         }
 
-        private object FollowingMove(string functionName, object param)
+        object FollowingMove(string functionName, object param)
         {
             if (FollowSP == null)
                 return null;
@@ -888,10 +895,10 @@ namespace WhiteCore.BotManager
 
         #region Following Decision
 
-        private void FollowDecision()
+        void FollowDecision()
         {
             // FOLLOW an avatar - this is looking for an avatar UUID so wont follow a prim here  - yet
-            //Call this each iteration so that if the av leaves, we don't get stuck following a null person
+            //Call this each iteration so that if the avatar leaves, we don't get stuck following a null person
             FollowSP = m_controller.GetScene().GetScenePresence(FollowUUID);
             //If its still null, the person doesn't exist, cancel the follow and return
             if (FollowSP == null)
@@ -953,7 +960,7 @@ namespace WhiteCore.BotManager
 
         #region Direct Following code
 
-        private void DirectFollowing()
+        void DirectFollowing()
         {
             if (m_controller == null)
                 return;
@@ -1014,7 +1021,7 @@ namespace WhiteCore.BotManager
 
         #region BestFitPath Following code
 
-        private void ShowMap(string mod, string[] cmd)
+        void ShowMap(string mod, string[] cmd)
         {
             int sqrt = (int) Math.Sqrt(map.Length);
             for (int x = sqrt - 1; x > -1; x--)
@@ -1040,14 +1047,14 @@ namespace WhiteCore.BotManager
             MainConsole.Instance.Warn("\n");
         }
 
-        private int resolution = 10;
-        private int[,] map;
-        private int failedToMove;
-        private int sincefailedToMove;
-        private Vector3 m_lastPos = Vector3.Zero;
-        private bool m_toAvatar;
+        int resolution = 10;
+        int[,] map;
+        int failedToMove;
+        int sincefailedToMove;
+        Vector3 m_lastPos = Vector3.Zero;
+        bool m_toAvatar;
 
-        private bool BestFitPathFollowing(List<ISceneChildEntity> raycastEntities)
+        bool BestFitPathFollowing(List<ISceneChildEntity> raycastEntities)
         {
             Vector3 targetPos = FollowSP.AbsolutePosition + FollowOffset;
             Vector3 currentPos2 = m_controller.AbsolutePosition;
@@ -1180,13 +1187,13 @@ namespace WhiteCore.BotManager
             return true;
         }
 
-        private Vector3 ConvertPathToPos(ISceneChildEntity[] raycastEntities, ISceneEntity[] entites,
+        Vector3 ConvertPathToPos(ISceneChildEntity[] raycastEntities, ISceneEntity[] entites,
                                          Vector3 originalPos, List<Vector3> path, ref int i)
         {
             start:
             if (i == path.Count)
                 return Vector3.Zero;
-            if (path[i].X == (11*resolution) && path[i].Y == (11*resolution))
+            if (Math.Abs (path [i].X - (11 * resolution)) < EPSILON && Math.Abs (path [i].Y - (11 * resolution)) < EPSILON)
             {
                 i++;
                 goto start;
@@ -1218,12 +1225,12 @@ namespace WhiteCore.BotManager
             if (failedToMove > 1)
             {
                 return Vector3.Zero;
-                //CleanUpPos (raycastEntities, entites, ref newPos);
+                //CleanUpPos (raycastEntities, entities, ref newPos);
             }
             return newPos;
         }
 
-        private void CleanUpPos(ISceneChildEntity[] raycastEntities, ISceneEntity[] entites, ref Vector3 pos)
+        void CleanUpPos(ISceneChildEntity[] raycastEntities, ISceneEntity[] entites, ref Vector3 pos)
         {
             List<ISceneChildEntity> childEntities = llCastRay(m_controller.AbsolutePosition, pos);
             childEntities.AddRange(raycastEntities); //Add all of the ones that are in between us and the avatar as well
@@ -1271,11 +1278,11 @@ namespace WhiteCore.BotManager
             }
         }
 
-        private void FindTargets(Vector3 currentPos, Vector3 targetPos, ref int targetX, ref int targetY)
+        void FindTargets(Vector3 currentPosition, Vector3 targetPos, ref int targetX, ref int targetY)
         {
             //we're at pos 11, 11, so we have to add/subtract from there
-            float xDiff = (targetPos.X - currentPos.X);
-            float yDiff = (targetPos.Y - currentPos.Y);
+            float xDiff = (targetPos.X - currentPosition.X);
+            float yDiff = (targetPos.Y - currentPosition.Y);
 
             targetX += (int) (xDiff*resolution);
             targetY += (int) (yDiff*resolution);
@@ -1285,22 +1292,23 @@ namespace WhiteCore.BotManager
 
         #region Significant Client Movement Following code
 
-        private List<Vector3> m_significantAvatarPositions = new List<Vector3>();
-        private int currentPos;
+        List<Vector3> m_significantAvatarPositions = new List<Vector3>();
+        int currentPos;
 
-        private void EventManager_OnClientMovement()
+        void EventManager_OnClientMovement()
         {
             if (FollowSP != null)
-                lock (m_significantAvatarPositions)
+                lock (_lock)
                     m_significantAvatarPositions.Add(FollowSP.AbsolutePosition);
         }
 
-        private void ClearOutInSignificantPositions(bool checkPositions)
+        void ClearOutInSignificantPositions(bool checkPositions)
         {
             int closestPosition = 0;
             double closestDistance = 0;
             Vector3[] sigPos;
-            lock (m_significantAvatarPositions)
+
+            lock (_lock)
             {
                 sigPos = new Vector3[m_significantAvatarPositions.Count];
                 m_significantAvatarPositions.CopyTo(sigPos);
@@ -1309,7 +1317,7 @@ namespace WhiteCore.BotManager
             for (int i = 0; i < sigPos.Length; i++)
             {
                 double val = Util.GetDistanceTo(m_controller.AbsolutePosition, sigPos[i]);
-                if (closestDistance == 0 || closestDistance > val)
+                if (Math.Abs (closestDistance) < EPSILON || closestDistance > val)
                 {
                     closestDistance = val;
                     closestPosition = i;
@@ -1334,7 +1342,7 @@ namespace WhiteCore.BotManager
             m_significantAvatarPositions = vectors;
         }
 
-        private void SignificantPositionFollowing()
+        void SignificantPositionFollowing()
         {
             //Do this first
             ClearOutInSignificantPositions(true);
@@ -1398,10 +1406,10 @@ namespace WhiteCore.BotManager
 
         #region Distance Event
 
-        private readonly Dictionary<UUID, FollowingEvent> m_followDistanceEvents =
+        readonly Dictionary<UUID, FollowingEvent> m_followDistanceEvents =
             new Dictionary<UUID, FollowingEvent>();
 
-        private readonly Dictionary<UUID, float> m_followDistance = new Dictionary<UUID, float>();
+        readonly Dictionary<UUID, float> m_followDistance = new Dictionary<UUID, float>();
 
         public void AddDistanceEvent(UUID avatarID, float distance, FollowingEvent ev)
         {
@@ -1419,7 +1427,7 @@ namespace WhiteCore.BotManager
                 EventManager.UnregisterEventHandler("Update", DistanceFollowUpdate);
         }
 
-        private class FollowingEventHolder
+        class FollowingEventHolder
         {
             public UUID AvID;
             public UUID BotID;
@@ -1448,8 +1456,8 @@ namespace WhiteCore.BotManager
         }
 
 
-        private readonly Dictionary<UUID, FollowingEvent> m_LineOfSightEvents = new Dictionary<UUID, FollowingEvent>();
-        private readonly Dictionary<UUID, float> m_LineOfSight = new Dictionary<UUID, float>();
+        readonly Dictionary<UUID, FollowingEvent> m_LineOfSightEvents = new Dictionary<UUID, FollowingEvent>();
+        readonly Dictionary<UUID, float> m_LineOfSight = new Dictionary<UUID, float>();
 
         public void AddLineOfSightEvent(UUID avatarID, float distance, FollowingEvent ev)
         {
@@ -1516,11 +1524,13 @@ namespace WhiteCore.BotManager
 
     public class BotClientAPI : IClientAPI
     {
+        static readonly object _lock = new object();
+
         public readonly AgentCircuitData m_circuitData;
         public readonly UUID m_myID = UUID.Random();
         public readonly IScene m_scene;
-        private static UInt32 UniqueId = 1;
-        private BotAvatarController m_controller;
+        static uint UniqueId = 1;
+        BotAvatarController m_controller;
 
         public UUID ScopeID { get; set; }
 
@@ -1558,7 +1568,7 @@ namespace WhiteCore.BotManager
             get { return m_myID; }
         }
 
-        private uint m_circuitCode;
+        uint m_circuitCode;
 
         public uint CircuitCode
         {
@@ -1581,7 +1591,7 @@ namespace WhiteCore.BotManager
 
         #region IClientCore Members
 
-        private readonly Dictionary<Type, object> m_clientInterfaces = new Dictionary<Type, object>();
+        readonly Dictionary<Type, object> m_clientInterfaces = new Dictionary<Type, object>();
 
         public T Get<T>()
         {
@@ -1599,13 +1609,13 @@ namespace WhiteCore.BotManager
             return false;
         }
 
-        private void RegisterInterfaces()
+        void RegisterInterfaces()
         {
         }
 
-        private void RegisterInterface<T>(T iface)
+        void RegisterInterface<T>(T iface)
         {
-            lock (m_clientInterfaces)
+            lock (_lock)
             {
                 if (!m_clientInterfaces.ContainsKey(typeof (T)))
                 {
@@ -1628,6 +1638,7 @@ namespace WhiteCore.BotManager
         public event PreSendImprovedInstantMessage OnPreSendInstantMessage;
         public event ChatMessage OnChatFromClient;
         public event RezObject OnRezObject;
+        public event RezRestoreToWorld OnRezRestoreToWorld;
         public event ModifyTerrain OnModifyTerrain;
         public event BakeTerrain OnBakeTerrain;
         public event SetAppearance OnSetAppearance;
@@ -1845,55 +1856,30 @@ namespace WhiteCore.BotManager
         public event LinkInventoryItem OnLinkInventoryItem;
 
         public event AgentSit OnRedo;
-
         public event LandUndo OnLandUndo;
-
         public event FindAgentUpdate OnFindAgent;
-
         public event TrackAgentUpdate OnTrackAgent;
-
         public event NewUserReport OnUserReport;
-
         public event SaveStateHandler OnSaveState;
-
         public event GroupAccountSummaryRequest OnGroupAccountSummaryRequest;
-
         public event GroupAccountDetailsRequest OnGroupAccountDetailsRequest;
-
         public event GroupAccountTransactionsRequest OnGroupAccountTransactionsRequest;
-
         public event FreezeUserUpdate OnParcelFreezeUser;
-
         public event EjectUserUpdate OnParcelEjectUser;
-
         public event ParcelBuyPass OnParcelBuyPass;
-
         public event ParcelGodMark OnParcelGodMark;
-
         public event GroupActiveProposalsRequest OnGroupActiveProposalsRequest;
-
         public event GroupVoteHistoryRequest OnGroupVoteHistoryRequest;
-
         public event SimWideDeletesDelegate OnSimWideDeletes;
-
         public event GroupProposalBallotRequest OnGroupProposalBallotRequest;
-
         public event SendPostcard OnSendPostcard;
-
         public event MuteListEntryUpdate OnUpdateMuteListEntry;
-
         public event MuteListEntryRemove OnRemoveMuteListEntry;
-
         public event GodlikeMessage OnGodlikeMessage;
-
         public event GodUpdateRegionInfoUpdate OnGodUpdateRegionInfoUpdate;
-
         public event ChangeInventoryItemFlags OnChangeInventoryItemFlags;
-
         public event TeleportCancel OnTeleportCancel;
-
         public event GodlikeMessage OnEstateTelehubRequest;
-
         public event ViewerStartAuction OnViewerStartAuction;
 
 #pragma warning restore 67
@@ -1976,7 +1962,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void ProcessInPacket(Packet NewPack)
+        public void ProcessInPacket(Packet newPack)
         {
         }
 
@@ -1987,7 +1973,7 @@ namespace WhiteCore.BotManager
 
         public void Close(bool p)
         {
-            //raiseevent on the packet server to Shutdown the circuit
+            //raise event on the packet server to Shutdown the circuit
             if (OnLogout != null)
                 OnLogout(this);
             if (OnConnectionClosed != null)
@@ -2022,6 +2008,7 @@ namespace WhiteCore.BotManager
 
         public void SendInstantMessage(GridInstantMessage im)
         {
+            // TODO:  Sort this out - greythane- 20160406
             //This will cause a stack overflow, as it will loop back to trying to send the IM out again
             //m_controller.SendInstantMessage(im);
         }
@@ -2134,7 +2121,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendCoarseLocationUpdate(List<UUID> users, List<Vector3> CoarseLocations)
+        public void SendCoarseLocationUpdate(List<UUID> users, List<Vector3> coarseLocations)
         {
         }
 
@@ -2164,7 +2151,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendInventoryItemCreateUpdate(InventoryItemBase Item, uint callbackId)
+        public void SendInventoryItemCreateUpdate(InventoryItemBase item, uint callbackId)
         {
         }
 
@@ -2172,7 +2159,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendTakeControls(int controls, bool passToAgent, bool TakeControls)
+        public void SendTakeControls(int controls, bool passToAgent, bool takeControls)
         {
         }
 
@@ -2196,16 +2183,16 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendEconomyData(float EnergyEfficiency, int ObjectCapacity, int ObjectCount, int PriceEnergyUnit,
-                                    int PriceGroupCreate, int PriceObjectClaim, float PriceObjectRent,
-                                    float PriceObjectScaleFactor, int PriceParcelClaim, float PriceParcelClaimFactor,
-                                    int PriceParcelRent, int PricePublicObjectDecay, int PricePublicObjectDelete,
-                                    int PriceRentLight, int PriceUpload, int TeleportMinPrice,
-                                    float TeleportPriceExponent)
+        public void SendEconomyData(float energyEfficiency, int objectCapacity, int objectCount, int priceEnergyUnit,
+                                    int priceGroupCreate, int priceObjectClaim, float priceObjectRent,
+                                    float priceObjectScaleFactor, int priceParcelClaim, float priceParcelClaimFactor,
+                                    int priceParcelRent, int pricePublicObjectDecay, int pricePublicObjectDelete,
+                                    int priceRentLight, int priceUpload, int teleportMinPrice,
+                                    float teleportPriceExponent)
         {
         }
 
-        public void SendAvatarPickerReply(AvatarPickerReplyAgentDataArgs AgentData, List<AvatarPickerReplyDataArgs> Data)
+        public void SendAvatarPickerReply(AvatarPickerReplyAgentDataArgs agentData, List<AvatarPickerReplyDataArgs> data)
         {
         }
 
@@ -2281,7 +2268,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendEstateList(UUID invoice, int code, List<UUID> Data, uint estateID)
+        public void SendEstateList(UUID invoice, int code, List<UUID> data, uint estateID)
         {
         }
 
@@ -2303,7 +2290,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendLandProperties(int sequence_id, bool snap_selection, int request_result, LandData landData,
+        public void SendLandProperties(int sequenceId, bool snapSelection, int requestResult, LandData landData,
                                        float simObjectBonusFactor, int parcelObjectCapacity, int simObjectCapacity,
                                        uint regionFlags)
         {
@@ -2317,7 +2304,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendCameraConstraint(Vector4 ConstraintPlane)
+        public void SendCameraConstraint(Vector4 constraintPlane)
         {
         }
 
@@ -2325,7 +2312,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendLandParcelOverlay(byte[] data, int sequence_id)
+        public void SendLandParcelOverlay(byte[] data, int sequenceId)
         {
         }
 
@@ -2338,15 +2325,15 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendAssetUploadCompleteMessage(sbyte AssetType, bool Success, UUID AssetFullID)
+        public void SendAssetUploadCompleteMessage(sbyte assetType, bool success, UUID assetFullID)
         {
         }
 
-        public void SendConfirmXfer(ulong xferID, uint PacketID)
+        public void SendConfirmXfer(ulong xferID, uint packetID)
         {
         }
 
-        public void SendXferRequest(ulong XferID, short AssetType, UUID vFileID, byte FilePath, byte[] FileName)
+        public void SendXferRequest(ulong xferID, short assetType, UUID vFileID, byte filePath, byte[] fileName)
         {
         }
 
@@ -2354,7 +2341,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendImageFirstPart(ushort numParts, UUID ImageUUID, uint ImageSize, byte[] ImageData,
+        public void SendImageFirstPart(ushort numParts, UUID imageUUID, uint imageSize, byte[] imageData,
                                        byte imageCodec)
         {
         }
@@ -2371,11 +2358,11 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendObjectPropertiesFamilyData(uint RequestFlags, UUID ObjectUUID, UUID OwnerID, UUID GroupID,
-                                                   uint BaseMask, uint OwnerMask, uint GroupMask, uint EveryoneMask,
-                                                   uint NextOwnerMask, int OwnershipCost, byte SaleType, int SalePrice,
-                                                   uint Category, UUID LastOwnerID, string ObjectName,
-                                                   string Description)
+        public void SendObjectPropertiesFamilyData(uint requestFlags, UUID objectUUID, UUID ownerID, UUID groupID,
+                                                   uint baseMask, uint ownerMask, uint groupMask, uint everyoneMask,
+                                                   uint nextOwnerMask, int ownershipCost, byte saleType, int salePrice,
+                                                   uint category, UUID lastOwnerID, string objectName,
+                                                   string description)
         {
         }
 
@@ -2391,20 +2378,20 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendSitResponse(UUID TargetID, Vector3 OffsetPos, Quaternion SitOrientation, bool autopilot,
-                                    Vector3 CameraAtOffset, Vector3 CameraEyeOffset, bool ForceMouseLook)
+        public void SendSitResponse(UUID targetID, Vector3 offsetPos, Quaternion sitOrientation, bool autopilot,
+                                    Vector3 cameraAtOffset, Vector3 cameraEyeOffset, bool forceMouseLook)
         {
         }
 
-        public void SendAdminResponse(UUID Token, uint AdminLevel)
+        public void SendAdminResponse(UUID token, uint adminLevel)
         {
         }
 
-        public void SendGroupMembership(GroupMembershipData[] GroupMembership)
+        public void SendGroupMembership(GroupMembershipData[] groupMembership)
         {
         }
 
-        public void SendGroupNameReply(UUID groupLLUID, string GroupName)
+        public void SendGroupNameReply(UUID groupLLUID, string groupName)
         {
         }
 
@@ -2441,7 +2428,7 @@ namespace WhiteCore.BotManager
             return new byte[0];
         }
 
-        public void SendBlueBoxMessage(UUID FromAvatarID, string FromAvatarName, string Message)
+        public void SendBlueBoxMessage(UUID fromAvatarID, string fromAvatarName, string message)
         {
         }
 
@@ -2466,7 +2453,7 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendParcelInfo(LandData land, UUID parcelID, uint x, uint y, string SimName)
+        public void SendParcelInfo(LandData land, UUID parcelID, uint x, uint y, string simName)
         {
         }
 
@@ -2579,21 +2566,21 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendGroupActiveProposals(UUID groupID, UUID transactionID, GroupActiveProposals[] Proposals)
+        public void SendGroupActiveProposals(UUID groupID, UUID transactionID, GroupActiveProposals[] proposals)
         {
         }
 
-        public void SendGroupVoteHistory(UUID groupID, UUID transactionID, GroupVoteHistory Vote,
-                                         GroupVoteHistoryItem[] Items)
+        public void SendGroupVoteHistory(UUID groupID, UUID transactionID, GroupVoteHistory vote,
+                                         GroupVoteHistoryItem[] items)
         {
         }
 
-        public bool AddGenericPacketHandler(string MethodName, GenericMessage handler)
+        public bool AddGenericPacketHandler(string methodName, GenericMessage handler)
         {
             return true;
         }
 
-        public bool RemoveGenericPacketHandler(string MethodName)
+        public bool RemoveGenericPacketHandler(string methodName)
         {
             return true;
         }
@@ -2636,15 +2623,15 @@ namespace WhiteCore.BotManager
         {
         }
 
-        public void SendPlacesQuery(ExtendedLandData[] LandData, UUID queryID, UUID transactionID)
+        public void SendPlacesQuery(ExtendedLandData[] landData, UUID queryID, UUID transactionID)
         {
         }
 
-        public void FireUpdateParcel(LandUpdateArgs args, int LocalID)
+        public void FireUpdateParcel(LandUpdateArgs args, int localID)
         {
         }
 
-        public void SendTelehubInfo(Vector3 TelehubPos, Quaternion TelehubRot, List<Vector3> SpawnPoint, UUID ObjectID,
+        public void SendTelehubInfo(Vector3 telehubPos, Quaternion telehubRot, List<Vector3> spawnPoint, UUID objectID,
                                     string nameT)
         {
         }

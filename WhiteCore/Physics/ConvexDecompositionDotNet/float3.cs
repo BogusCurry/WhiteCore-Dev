@@ -27,7 +27,7 @@
 
 using System;
 
-namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
+namespace WhiteCore.Physics.ConvexDecompositionDotNet
 {
     public class float3 : IEquatable<float3>
     {
@@ -194,7 +194,7 @@ namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
                 {
                     closePoint.NearestPointInLineSegment(point, triangle1, triangle2);
                     closeMagnitude2 = point.Distance2(closePoint);
-                    if (bForce || (bestMagnitude2 > closeMagnitude2))
+                    if (bestMagnitude2 > closeMagnitude2)
                     {
                         bForce = false;
                         bestMagnitude2 = closeMagnitude2;

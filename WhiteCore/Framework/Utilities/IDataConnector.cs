@@ -125,7 +125,7 @@ namespace WhiteCore.Framework.Utilities
 
     public class SchemaDefinition
     {
-        private string m_name;
+        string m_name;
 
         /// <summary>
         ///     Name of schema
@@ -135,7 +135,7 @@ namespace WhiteCore.Framework.Utilities
             get { return m_name; }
         }
 
-        private ColumnDefinition[] m_columns;
+        ColumnDefinition[] m_columns;
 
         /// <summary>
         ///     Columns in schema
@@ -145,7 +145,7 @@ namespace WhiteCore.Framework.Utilities
             get { return m_columns; }
         }
 
-        private IndexDefinition[] m_indices;
+        IndexDefinition[] m_indices;
 
         /// <summary>
         ///     Indices in schema
@@ -228,6 +228,7 @@ namespace WhiteCore.Framework.Utilities
         Float,
         Binary32,
         Binary64,
+        UUID,
         Unknown        
     }
 
@@ -300,6 +301,7 @@ namespace WhiteCore.Framework.Utilities
         public static readonly ColumnTypeDef UTinyInt4 = new ColumnTypeDef(ColumnType.TinyInt, 4, true);
         public static readonly ColumnTypeDef Binary32 = new ColumnTypeDef(ColumnType.Binary, 32);
         public static readonly ColumnTypeDef Binary64 = new ColumnTypeDef(ColumnType.Binary, 64);
+        public static readonly ColumnTypeDef UUID = new ColumnTypeDef(ColumnType.UUID, 36);
         public static readonly ColumnTypeDef Unknown = new ColumnTypeDef(ColumnType.Unknown);
 
 
@@ -366,6 +368,7 @@ namespace WhiteCore.Framework.Utilities
     {
         public string[] Fields { get; set; }
         public IndexType Type { get; set; }
+        public int IndexSize { get; set; }
 
         public override bool Equals(object obj)
         {

@@ -25,11 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.Collections.Generic;
+using Nini.Config;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.SceneInfo;
-using Nini.Config;
 
 namespace WhiteCore.Framework.Modules
 {
@@ -44,6 +43,12 @@ namespace WhiteCore.Framework.Modules
         /// </summary>
         /// <returns></returns>
         string Name { get; }
+
+        /// <summary>
+        /// Gets or sets the log path.
+        /// </summary>
+        /// <value>The log path.</value>
+        string LogPath { get; set; }
 
         /// <summary>
         ///     All commands that are enabled on this console
@@ -76,8 +81,8 @@ namespace WhiteCore.Framework.Modules
         ///     Set up this console
         /// </summary>
         /// <param name="source"></param>
-        /// <param name="baseOpenSim"></param>
-        void Initialize(IConfigSource source, ISimulationBase baseOpenSim);
+        /// <param name="simBase"></param>
+        void Initialize(IConfigSource source, ISimulationBase simBase);
 
         /// <summary>
         ///     Locks other threads from inserting text onto the console until the other threads are done
@@ -163,7 +168,12 @@ namespace WhiteCore.Framework.Modules
         void Fatal(object message);
         void FatalFormat(string format, params object[] args);
         void Format(Level level, string format, params object[] args);
+        void FormatNoTime(Level level, string format, params object[] args);
         void Info(object message);
+        void CleanInfo(object message);
+        void CleanInfoFormat(string format, params object[] args);
+        void Ticker();
+        void Ticker (string message, bool newline);
         void InfoFormat(string format, params object[] args);
         void Log(Level level, object message);
         void Trace(object message);

@@ -1,5 +1,6 @@
 /*
- * Copyright 2011 Matthew Beardmore
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://aurora-sim.org
+ * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -24,11 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
-using WhiteCore.Framework.Services;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
+using OpenMetaverse;
+using WhiteCore.Framework.Services;
 
 namespace WhiteCore.Modules.Ban
 {
@@ -51,7 +51,7 @@ namespace WhiteCore.Modules.Ban
         public PresenceInfoFlags Flags;
 
         [Flags]
-        public enum PresenceInfoFlags : int
+        public enum PresenceInfoFlags
         {
             Clean = 1 << 1,
             Suspected = 1 << 2,

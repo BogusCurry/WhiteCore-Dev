@@ -25,26 +25,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+using System.Collections.Generic;
+using Nini.Config;
+using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 using WhiteCore.Framework.DatabaseInterfaces;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.SceneInfo;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Utilities;
-using Nini.Config;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
-using System.Collections.Generic;
 
 namespace WhiteCore.Services.DataService
 {
     public class LocalEstateConnector : ConnectorBase, IEstateConnector
     {
-        private IGenericData GD;
-        private string m_estateTable = "estatesettings";
-        private string m_estateRegionsTable = "estateregions";
+        IGenericData GD;
+        string m_estateSettingsTable = "estate_settings";
+        string m_estateRegionsTable = "estate_regions";
 
         #region IEstateConnector Members
+        public bool RemoteCalls()
+        {
+            return m_doRemoteCalls; 
+        }
 
         public void Initialize(IGenericData GenericData, IConfigSource source, IRegistryCore registry,
                                string defaultConnectionString)
@@ -76,11 +79,13 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public EstateSettings GetEstateSettings(UUID regionID)
         {
-            object remoteValue = DoRemote(regionID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (EstateSettings)remoteValue;
+            EstateSettings settings = new EstateSettings () { EstateID = 0 };
 
-            EstateSettings settings = new EstateSettings() {EstateID = 0};
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (regionID);
+                return remoteValue != null ? (EstateSettings)remoteValue : settings;
+            }
+
             int estateID = GetEstateID(regionID);
             if (estateID == 0)
                 return settings;
@@ -90,9 +95,10 @@ namespace WhiteCore.Services.DataService
 
         public EstateSettings GetEstateSettings(int EstateID)
         {
-            object remoteValue = DoRemote(EstateID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (EstateSettings)remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (EstateID);
+                return remoteValue != null ? (EstateSettings)remoteValue : new EstateSettings { EstateID = 0 };
+            }
 
             return GetEstate(EstateID);
         }
@@ -101,15 +107,55 @@ namespace WhiteCore.Services.DataService
         {
             QueryFilter filter = new QueryFilter();
             filter.andFilters["EstateName"] = name;
-            return GetEstate(int.Parse(GD.Query(new string[1] {"EstateID"}, "estatesettings", filter, null, null, null)[0]));
+            //            var EstateID = int.Parse (GD.Query (new string[1] { "EstateID" }, "estatesettings", filter, null, null, null) [0]);
+            List<string> estate = GD.Query(new string[1] { "EstateID" }, m_estateSettingsTable, filter, null, null, null);
+
+            if (estate.Count == 0)              // not found!!
+                return null;
+
+            int EstateID;
+            if (!int.TryParse (estate[0], out EstateID))
+                return null;
+            
+            return GetEstate (EstateID);
+        }
+
+        [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
+        public int CreateNewEstate(EstateSettings es)
+        {
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (es.ToOSD ());
+                return remoteValue != null ? (int)remoteValue : 0;      // TODO: 0 may be incorrect??
+            }
+
+
+            int estateID = GetEstate(es.EstateOwner, es.EstateName);
+            if (estateID > 0)
+            {
+                return estateID;
+            }
+
+            // check for system or user estates
+            if ((es.EstateOwner == (UUID) Constants.GovernorUUID))                  // Mainland?
+            {
+                es.EstateID = Constants.MainlandEstateID;
+            } else if ( (es.EstateOwner == (UUID) Constants.RealEstateOwnerUUID) )  // System Estate?
+            {
+                es.EstateID = (uint) Constants.SystemEstateID;                       
+            } else                                                                  // must be a new user estate then
+                es.EstateID = GetNewEstateID();
+
+            SaveEstateSettings(es, true);
+            return (int) es.EstateID;
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public int CreateNewEstate(EstateSettings es, UUID RegionID)
         {
-            object remoteValue = DoRemote(es.ToOSD(), RegionID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (int) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (es.ToOSD (), RegionID);
+                return remoteValue != null ? (int)remoteValue : 0;
+            }
 
 
             int estateID = GetEstate(es.EstateOwner, es.EstateName);
@@ -125,12 +171,14 @@ namespace WhiteCore.Services.DataService
             return (int) es.EstateID;
         }
 
+
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public void SaveEstateSettings(EstateSettings es)
         {
-            object remoteValue = DoRemote(es.ToOSD());
-            if (remoteValue != null || m_doRemoteOnly)
+            if (m_doRemoteOnly) {
+                DoRemote (es.ToOSD ());
                 return;
+            }
 
             SaveEstateSettings(es, false);
         }
@@ -138,9 +186,10 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public bool LinkRegion(UUID regionID, int estateID)
         {
-            object remoteValue = DoRemote(regionID, estateID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return remoteValue == null ? false : (bool) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (regionID, estateID);
+                return remoteValue != null ? (bool)remoteValue : false;
+            }
 
             Dictionary<string, object> row = new Dictionary<string, object>(2);
             row["RegionID"] = regionID;
@@ -153,9 +202,10 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public bool DelinkRegion(UUID regionID)
         {
-            object remoteValue = DoRemote(regionID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return remoteValue == null ? false : (bool) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (regionID);
+                return remoteValue != null ? (bool)remoteValue : false;
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["RegionID"] = regionID;
@@ -167,30 +217,84 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.High)]
         public bool DeleteEstate(int estateID)
         {
-            object remoteValue = DoRemote(estateID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return remoteValue == null ? false : (bool) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (estateID);
+                return remoteValue != null ? (bool)remoteValue : false;
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["EstateID"] = estateID;
             GD.Delete(m_estateRegionsTable, filter);
-            GD.Delete(m_estateTable, filter);
+            GD.Delete(m_estateSettingsTable, filter);
 
             return true;
+        }
+
+        [CanBeReflected(ThreatLevel = ThreatLevel.High)]
+        public bool EstateExists(string name)
+        {
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (name);
+                return remoteValue != null ? (bool)remoteValue : false;
+            }
+
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["EstateName"] = name;
+            List<string> retVal = GD.Query(new string[1] { "EstateID" }, m_estateSettingsTable, filter, null, null, null);
+
+            return retVal.Count > 0;
+        }
+
+        [CanBeReflected(ThreatLevel = ThreatLevel.High)]
+        public bool EstateRegionExists(int estateID, UUID regionID)
+        {
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (estateID, regionID);
+                return remoteValue != null ? (bool)remoteValue : false;
+            }
+
+            bool found = false;
+            var eRegions = GetRegions (estateID);
+            if (eRegions.Count == 0)
+                return found;
+
+            foreach (UUID rId in eRegions)
+                if (rId == regionID)
+                    found = true;
+            
+            return found;
+        }
+
+        [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
+        public int GetEstateID(string name)
+        {
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (name);
+                return remoteValue != null ? (int)remoteValue : 0;
+            }
+
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["EstateName"] = name;
+            List<string> retVal = GD.Query(new string[1] { "EstateID" }, m_estateSettingsTable, filter, null, null, null);
+
+            if (retVal.Count > 0)
+                return int.Parse(retVal[0]);        // return the EstateID
+            return 0;
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public int GetEstate(UUID ownerID, string name)
         {
-            object remoteValue = DoRemote(ownerID, name);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (int) remoteValue;
-
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (ownerID, name);
+                return remoteValue != null ? (int)remoteValue : 0;
+            }
+                
             QueryFilter filter = new QueryFilter();
             filter.andFilters["EstateName"] = name;
             filter.andFilters["EstateOwner"] = ownerID;
 
-            List<string> retVal = GD.Query(new string[1] {"EstateID"}, "estatesettings", filter, null, null, null);
+            List<string> retVal = GD.Query(new string[1] { "EstateID" }, m_estateSettingsTable, filter, null, null, null);
 
             if (retVal.Count > 0)
                 return int.Parse(retVal[0]);
@@ -200,15 +304,23 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public List<UUID> GetRegions(int estateID)
         {
-            object remoteValue = DoRemote(estateID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (List<UUID>) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (estateID);
+                return remoteValue != null ? (List<UUID>)remoteValue : new List<UUID> ();
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["EstateID"] = estateID;
             return
                 GD.Query(new string[1] {"RegionID"}, m_estateRegionsTable, filter, null, null, null)
                   .ConvertAll(x => UUID.Parse(x));
+        }
+
+        [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
+        public List<string> GetEstates()
+        {
+            List<string> estates = GD.Query(new string[1] { "EstateName" }, m_estateSettingsTable, null, null, null, null);
+            return estates;
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
@@ -220,16 +332,17 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public List<EstateSettings> GetEstates(UUID OwnerID, Dictionary<string, bool> boolFields)
         {
-            object remoteValue = DoRemote(OwnerID, boolFields);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (List<EstateSettings>) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (OwnerID, boolFields);
+                return remoteValue != null ? (List<EstateSettings>)remoteValue : new List<EstateSettings> ();
+            }
 
             List<EstateSettings> settings = new List<EstateSettings>();
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["EstateOwner"] = OwnerID;
             List<int> retVal =
-                GD.Query(new string[1] {"EstateID"}, m_estateTable, filter, null, null, null)
+                GD.Query(new string[1] { "EstateID" }, m_estateSettingsTable, filter, null, null, null)
                   .ConvertAll(x => int.Parse(x));
             foreach (int estateID in retVal)
             {
@@ -250,9 +363,7 @@ namespace WhiteCore.Services.DataService
                 }
 
                 if (Add)
-                {
                     settings.Add(es);
-                }
             }
             return settings;
         }
@@ -271,29 +382,34 @@ namespace WhiteCore.Services.DataService
             return (retVal.Count > 0) ? int.Parse(retVal[0]) : 0;
         }
 
-        private EstateSettings GetEstate(int estateID)
+        EstateSettings GetEstate(int estateID)
         {
             QueryFilter filter = new QueryFilter();
             filter.andFilters["EstateID"] = estateID;
-            List<string> retVals = GD.Query(new string[1] {"*"}, m_estateTable, filter, null, null, null);
-            EstateSettings settings = new EstateSettings
-                                          {
-                                              EstateID = 0
-                                          };
+
+            List<string> retVals = GD.Query(new string[1] { "*" }, m_estateSettingsTable, filter, null, null, null);
+            EstateSettings settings = new EstateSettings {EstateID = 0};
+
             if (retVals.Count > 0)
                 settings.FromOSD((OSDMap) OSDParser.DeserializeJson(retVals[4]));
 
             return settings;
         }
 
-        private uint GetNewEstateID()
+        uint GetNewEstateID()
         {
             List<string> QueryResults = GD.Query(new string[2]
                                                      {
                                                          "COUNT(EstateID)",
                                                          "MAX(EstateID)"
-                                                     }, m_estateTable, null, null, null, null);
-            return (uint.Parse(QueryResults[0]) > 0) ? uint.Parse(QueryResults[1]) + 1 : 100;
+                                                     }, m_estateSettingsTable, null, null, null, null);
+            if (uint.Parse (QueryResults [0]) > 0)
+            {
+                uint esID = uint.Parse (QueryResults [1]);
+                if (esID > 99)                                 // Mainland is @#1, system estate is #10, user estates start at 100
+                    return esID + 1;
+            }
+            return 100;
         }
 
         protected void SaveEstateSettings(EstateSettings es, bool doInsert)
@@ -309,11 +425,11 @@ namespace WhiteCore.Services.DataService
             {
                 QueryFilter filter = new QueryFilter();
                 filter.andFilters["EstateID"] = es.EstateID;
-                GD.Update(m_estateTable, values, null, filter, null, null);
+                GD.Update(m_estateSettingsTable, values, null, filter, null, null);
             }
             else
             {
-                GD.Insert(m_estateTable, values);
+                GD.Insert(m_estateSettingsTable, values);
             }
         }
 

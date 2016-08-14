@@ -31,7 +31,7 @@ using WhiteCore.Framework.Physics;
 using WhiteCore.Framework.SceneInfo;
 using WhiteCore.Framework.Utilities;
 using Nini.Config;
-using WhiteCore.Framework;
+
 
 namespace WhiteCore.Modules.Startup
 {
@@ -39,7 +39,7 @@ namespace WhiteCore.Modules.Startup
     {
         #region ISharedRegionStartupModule Members
 
-        public void Initialise(IScene scene, IConfigSource source, ISimulationBase openSimBase)
+        public void Initialise(IScene scene, IConfigSource source, ISimulationBase simBase)
         {
             IConfig PhysConfig = source.Configs["Physics"];
             IConfig MeshingConfig = source.Configs["Meshing"];
@@ -49,7 +49,7 @@ namespace WhiteCore.Modules.Startup
             if (PhysConfig != null)
             {
                 Path = PhysConfig.GetString("PathToPhysicsAssemblies", Path);
-                engine = PhysConfig.GetString("DefaultPhysicsEngine", "WhiteCoreOpenDynamicsEngine");
+                engine = PhysConfig.GetString("DefaultPhysicsEngine", "OpenDynamicsEngine");
                 meshEngine = MeshingConfig.GetString("DefaultMeshingEngine", "Meshmerizer");
                 string regionName = scene.RegionInfo.RegionName.Trim().Replace(' ', '_');
                 string RegionPhysicsEngine = PhysConfig.GetString("Region_" + regionName + "_PhysicsEngine",
@@ -64,7 +64,7 @@ namespace WhiteCore.Modules.Startup
             else
             {
                 //Load Sane defaults
-                engine = "WhiteCoreOpenDynamicsEngine";
+                engine = "OpenDynamicsEngine";
                 meshEngine = "Meshmerizer";
             }
             PhysicsPluginManager physicsPluginManager = new PhysicsPluginManager();
@@ -74,15 +74,15 @@ namespace WhiteCore.Modules.Startup
             scene.PhysicsScene = pScene;
         }
 
-        public void PostInitialise(IScene scene, IConfigSource source, ISimulationBase openSimBase)
+        public void PostInitialise(IScene scene, IConfigSource source, ISimulationBase simBase)
         {
         }
 
-        public void FinishStartup(IScene scene, IConfigSource source, ISimulationBase openSimBase)
+        public void FinishStartup(IScene scene, IConfigSource source, ISimulationBase simBase)
         {
         }
 
-        public void PostFinishStartup(IScene scene, IConfigSource source, ISimulationBase openSimBase)
+        public void PostFinishStartup(IScene scene, IConfigSource source, ISimulationBase simBase)
         {
         }
 

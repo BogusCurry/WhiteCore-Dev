@@ -25,14 +25,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
+using System;
+using System.Collections.Generic;
+using Nini.Config;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.ModuleLoader;
 using WhiteCore.Framework.Physics;
 using WhiteCore.Framework.SceneInfo;
-using Nini.Config;
-using System;
-using System.Collections.Generic;
 
 namespace WhiteCore.Modules.Startup
 {
@@ -41,8 +41,8 @@ namespace WhiteCore.Modules.Startup
     /// </summary>
     public class PhysicsPluginManager
     {
-        private readonly Dictionary<string, IMeshingPlugin> _MeshPlugins = new Dictionary<string, IMeshingPlugin>();
-        private readonly Dictionary<string, IPhysicsPlugin> _PhysPlugins = new Dictionary<string, IPhysicsPlugin>();
+        readonly Dictionary<string, IMeshingPlugin> _MeshPlugins = new Dictionary<string, IMeshingPlugin>();
+        readonly Dictionary<string, IPhysicsPlugin> _PhysPlugins = new Dictionary<string, IPhysicsPlugin>();
 
         /// <summary>
         ///     Get a physics scene for the given physics engine and mesher.

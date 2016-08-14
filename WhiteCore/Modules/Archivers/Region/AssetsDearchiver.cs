@@ -25,22 +25,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
-using WhiteCore.Framework.ConsoleFramework;
-using WhiteCore.Framework.Serialization;
-using WhiteCore.Framework.Services;
-using WhiteCore.Framework.Services.ClassHelpers.Assets;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Xml;
+using OpenMetaverse;
+using WhiteCore.Framework.ConsoleFramework;
+using WhiteCore.Framework.Serialization;
+using WhiteCore.Framework.Services;
+using WhiteCore.Framework.Services.ClassHelpers.Assets;
 
 namespace WhiteCore.Modules.Archivers
 {
     /// <summary>
-    ///     Dearchives assets
+    ///     De-archives assets
     /// </summary>
     public class AssetsDearchiver
     {
@@ -52,7 +51,7 @@ namespace WhiteCore.Modules.Archivers
         protected Dictionary<string, byte[]> m_assetDataAwaitingMetadata = new Dictionary<string, byte[]>();
 
         /// <summary>
-        ///     Cache to which dearchived assets will be added
+        ///     Cache to which de-archived assets will be added
         /// </summary>
         protected IAssetService m_cache;
 
@@ -67,7 +66,7 @@ namespace WhiteCore.Modules.Archivers
         }
 
         /// <summary>
-        ///     Add asset data to the dearchiver
+        ///     Add asset data to the de-archiver
         /// </summary>
         /// <param name="assetFilename"></param>
         /// <param name="data"></param>
@@ -154,7 +153,7 @@ namespace WhiteCore.Modules.Archivers
                     filename = filename.Remove(filename.Length - extension.Length);
                 }
 
-                MainConsole.Instance.DebugFormat("[ARCHIVER]: Importing asset {0}", filename);
+                MainConsole.Instance.DebugFormat("[Archiver]: Importing asset {0}", filename);
 
                 AssetBase asset = new AssetBase(filename, metadata.Name, (AssetType) metadata.AssetType, UUID.Zero)
                                       {Description = metadata.Description, Data = data, MetaOnly = false};
@@ -163,7 +162,7 @@ namespace WhiteCore.Modules.Archivers
             else
             {
                 MainConsole.Instance.ErrorFormat(
-                    "[DEARCHIVER]: Tried to dearchive data with filename {0} without any corresponding metadata",
+                    "[De-Archiver]: Tried to de-archive data with filename {0} without any corresponding metadata",
                     assetPath);
             }
         }

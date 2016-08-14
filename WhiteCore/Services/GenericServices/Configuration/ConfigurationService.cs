@@ -25,19 +25,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Servers;
 using WhiteCore.Framework.Services;
 using Nini.Config;
-using OpenMetaverse.StructuredData;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace WhiteCore.Services
 {
     /// <summary>
-    ///     This is an application plugin so that it loads asap as it is used by many things (IService modules especially)
+    ///     This is an application plugin so that it loads as it is used by many things (IService modules especially)
     /// </summary>
     public class ConfigurationService : IConfigurationService, IService
     {

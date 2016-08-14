@@ -25,25 +25,24 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+using System;
+using System.Collections.Generic;
+using Nini.Config;
+using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Utilities;
-using Nini.Config;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
-using System;
-using System.Collections.Generic;
 
 namespace WhiteCore.Services.DataService
 {
     public class LocalUserInfoConnector : IAgentInfoConnector
     {
-        private IGenericData GD;
+        IGenericData GD;
         protected bool m_allowDuplicatePresences = true;
         protected bool m_checkLastSeen = true;
-        private string m_realm = "userinfo";
+        string m_userInfoTable = "user_info";
 
         #region IAgentInfoConnector Members
 
@@ -60,11 +59,9 @@ namespace WhiteCore.Services.DataService
                     connectionString = source.Configs[Name].GetString("ConnectionString", defaultConnectionString);
 
                     m_allowDuplicatePresences =
-                        source.Configs[Name].GetBoolean("AllowDuplicatePresences",
-                                                        m_allowDuplicatePresences);
+                        source.Configs[Name].GetBoolean("AllowDuplicatePresences", m_allowDuplicatePresences);
                     m_checkLastSeen =
-                        source.Configs[Name].GetBoolean("CheckLastSeen",
-                                                        m_checkLastSeen);
+                        source.Configs[Name].GetBoolean("CheckLastSeen", m_checkLastSeen);
                 }
                 if (GD != null)
                     GD.ConnectToDatabase(connectionString, "UserInfo",
@@ -100,8 +97,8 @@ namespace WhiteCore.Services.DataService
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["UserID"] = info.UserID;
-            GD.Delete(m_realm, filter);
-            return GD.Insert(m_realm, values);
+            GD.Delete(m_userInfoTable, filter);
+            return GD.Insert(m_userInfoTable, values);
         }
 
         public void Update(string userID, Dictionary<string, object> values)
@@ -109,7 +106,7 @@ namespace WhiteCore.Services.DataService
             QueryFilter filter = new QueryFilter();
             filter.andFilters["UserID"] = userID;
 
-            GD.Update(m_realm, values, null, filter, null, null);
+            GD.Update(m_userInfoTable, values, null, filter, null, null);
         }
 
         public void SetLastPosition(string userID, UUID regionID, string regionURI, Vector3 lastPosition,
@@ -136,7 +133,7 @@ namespace WhiteCore.Services.DataService
             Update(userID, values);
         }
 
-        private static List<UserInfo> ParseQuery(List<string> query)
+        static List<UserInfo> ParseQuery(List<string> query)
         {
             List<UserInfo> users = new List<UserInfo>();
 
@@ -183,7 +180,7 @@ namespace WhiteCore.Services.DataService
             QueryFilter filter = new QueryFilter();
             filter.andFilters["CurrentRegionID"] = regionID;
             filter.andFilters["IsOnline"] = "1";
-            List<string> query = GD.Query(new string[1] {"*"}, m_realm, filter, null, null, null);
+            List<string> query = GD.Query(new string[1] { "*" }, m_userInfoTable, filter, null, null, null);
 
             if (query.Count == 0)
                 return new List<UserInfo>();
@@ -197,7 +194,7 @@ namespace WhiteCore.Services.DataService
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["UserID"] = userID;
-            List<string> query = GD.Query(new string[1] {"*"}, m_realm, filter, null, null, null);
+            List<string> query = GD.Query(new string[1] { "*" }, m_userInfoTable, filter, null, null, null);
 
             if (query.Count == 0)
             {
@@ -224,7 +221,8 @@ namespace WhiteCore.Services.DataService
 
         public uint RecentlyOnline(uint secondsAgo, bool stillOnline)
         {
-            int now = (int) Utils.DateTimeToUnixTime(DateTime.Now) - (int) secondsAgo;
+             //Beware!! login times are UTC!
+            int now = Util.ToUnixTime (DateTime.Now.ToUniversalTime ()) - (int)secondsAgo;
 
             QueryFilter filter = new QueryFilter();
             filter.orGreaterThanEqFilters["LastLogin"] = now;
@@ -235,13 +233,34 @@ namespace WhiteCore.Services.DataService
                 filter.andFilters["IsOnline"] = "1";
             }
 
-            return uint.Parse(GD.Query(new string[1] {"COUNT(UserID)"}, m_realm, filter, null, null, null)[0]);
+            List<string> userCount = GD.Query(new string[1] { "COUNT(UserID)" }, m_userInfoTable, filter, null, null, null);
+            return uint.Parse (userCount[0]);
         }
 
-        public List<UserInfo> RecentlyOnline(uint secondsAgo, bool stillOnline, Dictionary<string, bool> sort,
-                                             uint start, uint count)
+        public uint OnlineUsers(uint secondsAgo)
         {
-            int now = (int) Utils.DateTimeToUnixTime(DateTime.Now) - (int) secondsAgo;
+            QueryFilter filter = new QueryFilter();
+            if (secondsAgo > 0)
+            {
+                //Beware!! login times are UTC!
+                int now = Util.ToUnixTime (DateTime.Now.ToUniversalTime ()) - (int)secondsAgo;
+
+                filter.orGreaterThanEqFilters ["LastLogin"] = now;
+                filter.orGreaterThanEqFilters ["LastSeen"] = now;
+                //                filter.andGreaterThanFilters["LastLogout"] = now;
+            }
+
+            filter.andFilters["IsOnline"] = "1";
+
+
+            List<string> userCount = GD.Query(new string[1] { "COUNT(UserID)" }, m_userInfoTable, filter, null, null, null);
+            return uint.Parse (userCount[0]);
+        }
+
+        public List<UserInfo> RecentlyOnline(uint secondsAgo, bool stillOnline, Dictionary<string, bool> sort)
+        {
+            //Beware!! login times are UTC!
+            int now = Util.ToUnixTime (DateTime.Now.ToUniversalTime ()) - (int)secondsAgo;
 
             QueryFilter filter = new QueryFilter();
             filter.orGreaterThanEqFilters["LastLogin"] = now;
@@ -252,7 +271,30 @@ namespace WhiteCore.Services.DataService
                 filter.andFilters["IsOnline"] = "1";
             }
 
-            List<string> query = GD.Query(new string[] {"*"}, m_realm, filter, sort, start, count);
+            List<string> query = GD.Query(new string[] { "*" }, m_userInfoTable, filter, sort, null, null);
+
+            return ParseQuery(query);
+        }
+
+        public List<UserInfo> CurrentlyOnline(uint secondsAgo, Dictionary<string, bool> sort)
+        {
+
+            QueryFilter filter = new QueryFilter();
+            if (secondsAgo > 0)
+            {
+                //Beware!! login times are UTC!
+                int now = Util.ToUnixTime (DateTime.Now.ToUniversalTime ());
+                now -= (int) secondsAgo;
+
+                filter.orGreaterThanEqFilters["LastLogin"] = now;
+                filter.orGreaterThanEqFilters["LastSeen"] = now;
+            }
+
+            // online only please...
+            filter.andFilters["IsOnline"] = "1";
+
+
+            List<string> query = GD.Query(new string[] { "*" }, m_userInfoTable, filter, sort, null, null);
 
             return ParseQuery(query);
         }

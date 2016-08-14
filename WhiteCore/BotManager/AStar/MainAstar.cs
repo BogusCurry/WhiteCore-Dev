@@ -28,16 +28,16 @@
 using System;
 using System.Collections;
 
-namespace Games.Pathfinding.AStar2DTest
+namespace WhiteCore.BotManager.AStar
 {
     /// <summary>
-    ///     Test class for doing A* pathfinding on a 2D map.
+    ///     Test class for doing A* path finding on a 2D map.
     /// </summary>
-    internal class MainClass
+    class MainClass
     {
         #region Test Maps
 
-        private static readonly int[,] Map =
+        static readonly int[,] Map =
             {
                 {1, -1, 1, 1, 1, -1, 1, 1, 1, 1},
                 {1, -1, 1, -1, 1, -1, 1, 1, 1, 1},
@@ -98,15 +98,15 @@ namespace Games.Pathfinding.AStar2DTest
         /// <summary>
         ///     Prints the solution
         /// </summary>
-        /// <param name="ASolution">The list that holds the solution</param>
-        public static void PrintSolution(ArrayList ASolution)
+        /// <param name="aSolution">The list that holds the solution</param>
+        public static void PrintSolution(ArrayList aSolution)
         {
             for (int j = 0; j < 10; j++)
             {
                 for (int i = 0; i < 10; i++)
                 {
                     bool solution = false;
-                    foreach (AStarNode2D n in ASolution)
+                    foreach (AStarNode2D n in aSolution)
                     {
                         AStarNode2D tmp = new AStarNode2D(null, null, 0, i, j);
                         solution = n.IsSameState(tmp);
@@ -128,7 +128,7 @@ namespace Games.Pathfinding.AStar2DTest
         ///     The main entry point for the application.
         /// </summary>
         [STAThread]
-        private static void Main(string[] args)
+        static void Main(string[] args)
         {
             Console.WriteLine("Starting...");
 

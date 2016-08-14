@@ -26,11 +26,10 @@
  */
 
 using System.Collections.Generic;
-using WhiteCore.Framework.ClientInterfaces;
-using WhiteCore.Framework.PresenceInfo;
-using WhiteCore.Framework.Services;
 using OpenMetaverse;
+using WhiteCore.Framework.ClientInterfaces;
 using WhiteCore.Framework.DatabaseInterfaces;
+using WhiteCore.Framework.PresenceInfo;
 
 namespace WhiteCore.Framework.Modules
 {
@@ -66,6 +65,13 @@ namespace WhiteCore.Framework.Modules
             bool openEnrollment, bool allowPublish, bool maturePublish);
 
         /// <summary>
+        /// Determines whether the specified groupID is actually a group.
+        /// </summary>
+        /// <returns><c>true</c> if the specified groupID is a group ; otherwise, <c>false</c>.</returns>
+        /// <param name="groupID">Group UUID.</param>
+        bool IsGroup (UUID groupID);
+          
+        /// <summary>
         ///     Get a group
         /// </summary>
         /// <param name="name">Name of the group</param>
@@ -78,6 +84,13 @@ namespace WhiteCore.Framework.Modules
         /// <param name="GroupID">ID of the group</param>
         /// <returns>The group's data.  Null if there is no such group.</returns>
         GroupRecord GetGroupRecord(UUID GroupID);
+
+        /// <summary>
+        /// Gets a list of all groups.
+        /// </summary>
+        /// <returns>A list of group UUIDs</returns>
+        List <UUID> GetAllGroups ( UUID RequestingAgentID);
+        List<GroupMembersData> GetGroupMembers (UUID requestingAgentID, UUID GroupID);
 
         void ActivateGroup(IClientAPI remoteClient, UUID groupID);
         List<GroupTitlesData> GroupTitlesRequest(IClientAPI remoteClient, UUID groupID);

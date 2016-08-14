@@ -25,14 +25,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
+using System;
+using GlynnTucker.Cache;
+using Nini.Config;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Services.ClassHelpers.Assets;
-using GlynnTucker.Cache;
-using Nini.Config;
-using System;
 
 namespace WhiteCore.Services
 {
@@ -40,10 +40,10 @@ namespace WhiteCore.Services
     {
         #region Declares
 
-        private ICache m_Cache;
-        private uint m_DebugRate;
-        private ulong m_Hits;
-        private ulong m_Requests;
+        ICache m_Cache;
+        uint m_DebugRate;
+        ulong m_Hits;
+        ulong m_Requests;
 
         // Instrumentation
 

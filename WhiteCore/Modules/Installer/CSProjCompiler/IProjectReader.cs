@@ -8,7 +8,7 @@ namespace RunTimeCompiler
     /// <summary>
     ///     This interface defines a way of working with project-reader.
     ///     Currently the only project-reader developed is the one for c# projects,
-    ///     but many other readers can be developes for various languages/IDEs.
+    ///     but many other readers can be developed for various languages/IDEs.
     /// </summary>
     public interface IProjectReader
     {
@@ -20,14 +20,14 @@ namespace RunTimeCompiler
         ///     the file version.
         ///     Note!
         ///     If the call returns true it does not guaranties calls to ReadProject
-        ///     will be successfull.
+        ///     will be successful.
         /// </summary>
         /// <param name="filename">
         ///     The name of the project file. It should include
         ///     path (absolute or relative).
         /// </param>
         /// <returns>
-        ///     True if the project-reader "beleaves" he can read the project
+        ///     True if the project-reader "believes" he can read the project
         ///     file.
         /// </returns>
         bool CanOpen(string filename);

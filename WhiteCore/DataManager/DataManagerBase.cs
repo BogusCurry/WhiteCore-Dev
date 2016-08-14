@@ -38,9 +38,9 @@ namespace WhiteCore.DataManager
 {
     public abstract class DataManagerBase : IDataConnector
     {
-		private const string VERSION_TABLE_NAME = "whitecore_migrator_version";
-        private const string COLUMN_NAME = "name";
-        private const string COLUMN_VERSION = "version";
+		const string VERSION_TABLE_NAME = "migrator_version";
+        const string COLUMN_NAME = "name";
+        const string COLUMN_VERSION = "version";
 
         #region IDataConnector Members
 
@@ -50,29 +50,31 @@ namespace WhiteCore.DataManager
 
         public Version GetWhiteCoreVersion(string migratorName)
         {
-            if (!TableExists(VERSION_TABLE_NAME))
+            if (!TableExists (VERSION_TABLE_NAME))
             {
-                CreateTable(VERSION_TABLE_NAME, new[]
-                                                    {
-                                                        new ColumnDefinition
-                                                            {
-                                                                Name = COLUMN_VERSION,
-                                                                Type = new ColumnTypeDef {Type = ColumnType.Text}
-                                                            },
-                                                        new ColumnDefinition
-                                                            {
-                                                                Name = COLUMN_NAME,
-                                                                Type = new ColumnTypeDef {Type = ColumnType.Text}
-                                                            }
-                                                    }, new IndexDefinition[0]);
+                CreateTable (
+                    VERSION_TABLE_NAME,
+                    new[] {
+                        new ColumnDefinition {
+                            Name = COLUMN_VERSION,
+                            Type = new ColumnTypeDef { Type = ColumnType.Text }
+                        },
+                        new ColumnDefinition {
+                            Name = COLUMN_NAME,
+                            Type = new ColumnTypeDef { Type = ColumnType.Text }
+                        }
+                    },
+                    new IndexDefinition[0]);
             }
 
             Dictionary<string, object> where = new Dictionary<string, object>(1);
             where[COLUMN_NAME] = migratorName;
-            List<string> results = Query(new string[] {COLUMN_VERSION}, VERSION_TABLE_NAME, new QueryFilter
-                                                                                                {
-                                                                                                    andFilters = where
-                                                                                                }, null, null, null);
+            List<string> results = Query (
+                                       new string[] { COLUMN_VERSION },
+                                       VERSION_TABLE_NAME,
+                                       new QueryFilter { andFilters = where },
+                                       null, null, null);
+            
             if (results.Count > 0)
             {
                 Version[] highestVersion = {null};
@@ -90,30 +92,30 @@ namespace WhiteCore.DataManager
             return null;
         }
 
-        public void WriteWhiteCoreVersion(Version version, string MigrationName)
+        public void WriteWhiteCoreVersion(Version version, string migrationName)
         {
             if (!TableExists(VERSION_TABLE_NAME))
             {
-                CreateTable(VERSION_TABLE_NAME, new[]
-                                                    {
-                                                        new ColumnDefinition
-                                                            {
-                                                                Name = COLUMN_VERSION,
-                                                                Type =
-                                                                    new ColumnTypeDef
-                                                                        {
-                                                                            Type = ColumnType.String,
-                                                                            Size = 100
-                                                                        }
-                                                            }
-                                                    }, new IndexDefinition[0]);
+                CreateTable (
+                    VERSION_TABLE_NAME,
+                    new[] {
+                        new ColumnDefinition {
+                            Name = COLUMN_VERSION,
+                            Type = new ColumnTypeDef {
+                                Type = ColumnType.String,
+                                Size = 100
+                            }
+                        }
+                    },
+                    new IndexDefinition[0]);
             }
             //Remove previous versions
             QueryFilter filter = new QueryFilter();
-            filter.andFilters[COLUMN_NAME] = MigrationName;
+            filter.andFilters[COLUMN_NAME] = migrationName;
             Delete(VERSION_TABLE_NAME, filter);
+
             //Add the new version
-            Insert(VERSION_TABLE_NAME, new[] {version.ToString(), MigrationName});
+            Insert(VERSION_TABLE_NAME, new[] {version.ToString(), migrationName});
         }
 
         public void CopyTableToTable(string sourceTableName, string destinationTableName,
@@ -127,7 +129,7 @@ namespace WhiteCore.DataManager
 
             if (TableExists(destinationTableName))
             {
-                this.DropTable(destinationTableName);
+                DropTable(destinationTableName);
                 if (TableExists(destinationTableName))
                     throw new MigrationOperationException(
                         "Cannot copy table to new name, table with same name already exists: " + destinationTableName);
@@ -150,7 +152,7 @@ namespace WhiteCore.DataManager
             if (!TableExists(tableName))
             {
                 MainConsole.Instance.Warn("[DataMigrator]: Issue finding table " + tableName +
-                                          " when verifing tables exist!");
+                    " when verifying tables exist!"); 
                 return false;
             }
 
@@ -176,16 +178,15 @@ namespace WhiteCore.DataManager
                         {
                             continue; //They are the same type, let them go on through
                         }
-                        else
-                        {
-                            MainConsole.Instance.Warn("Mismatched Column Type on " + tableName + "." + thisDef.Name +
-                                                      ": " + GetColumnTypeStringSymbol(thisDef.Type) + ", " +
-                                                      GetColumnTypeStringSymbol(columnDefinition.Type));
-                        }
+
+                        MainConsole.Instance.Warn("Mismatched Column Type on " + tableName + "." + thisDef.Name +
+                                                  ": " + GetColumnTypeStringSymbol(thisDef.Type) + ", " +
+                                                  GetColumnTypeStringSymbol(columnDefinition.Type));
+                        
                     }
-                    MainConsole.Instance.Warn("[DataMigrator]: Issue verifing table " + tableName + " column " +
+                    MainConsole.Instance.Warn("[DataMigrator]: Issue verifying table " + tableName + " column " +
                                               columnDefinition.Name +
-                                              " when verifing tables exist, problem with new column definitions");
+                                              " when verifying tables exist, problem with new column definitions");
                     return false;
                 }
             }
@@ -205,9 +206,9 @@ namespace WhiteCore.DataManager
                             continue; //They are the same type, let them go on through
                         }
                     }
-                    MainConsole.Instance.Warn("[DataMigrator]: Issue verifing table " + tableName + " column " +
+                    MainConsole.Instance.Warn("[DataMigrator]: Issue verifying table " + tableName + " column " +
                                               columnDefinition.Name +
-                                              " when verifing tables exist, problem with old column definitions");
+                                              " when verifying tables exist, problem with old column definitions");
                     return false;
                 }
             }
@@ -235,10 +236,10 @@ namespace WhiteCore.DataManager
                     }
                     if (thisDef == null)
                     {
-                        MainConsole.Instance.Warn("[DataMigrator]: Issue verifing table " + tableName + " index " +
-                                                  indexDefinition.Type.ToString() + " (" +
+                        MainConsole.Instance.Warn("[DataMigrator]: Issue verifying table " + tableName + " index " +
+                                                  indexDefinition.Type + " (" +
                                                   string.Join(", ", indexDefinition.Fields) +
-                                                  ") when verifing tables exist");
+                                                  ") when verifying tables exist");
                         return false;
                     }
                 }
@@ -258,10 +259,10 @@ namespace WhiteCore.DataManager
                     }
                     if (thisDef == null)
                     {
-                        MainConsole.Instance.Warn("[DataMigrator]: Issue verifing table " + tableName + " index " +
-                                                  indexDefinition.Type.ToString() + " (" +
+                        MainConsole.Instance.Warn("[DataMigrator]: Issue verifying table " + tableName + " index " +
+                                                  indexDefinition.Type + " (" +
                                                   string.Join(", ", indexDefinition.Fields) +
-                                                  ") when verifing tables exist");
+                                                  ") when verifying tables exist");
                         return false;
                     }
                 }
@@ -304,8 +305,8 @@ namespace WhiteCore.DataManager
         #region UPDATE
 
         public abstract bool Update(string table, Dictionary<string, object> values,
-                                    Dictionary<string, int> incrementValue, QueryFilter queryFilter, uint? start,
-                                    uint? count);
+                                    Dictionary<string, int> incrementValue, QueryFilter queryFilter,
+                                    uint? start, uint? count);
 
         #endregion
 
@@ -449,12 +450,10 @@ namespace WhiteCore.DataManager
                                                : false;
                         break;
                     }
-                    else
-                    {
-                        throw new Exception(
-                            "You've discovered some type that's not reconized by WhiteCore, please place the correct conversion in ConvertTypeToColumnType. Type: " +
+
+                    throw new Exception(
+                            "You've discovered some type that's not recognized by WhiteCore, please place the correct conversion in ConvertTypeToColumnType. Type: " +
                             tStr);
-                    }
             }
 
             return typeDef;

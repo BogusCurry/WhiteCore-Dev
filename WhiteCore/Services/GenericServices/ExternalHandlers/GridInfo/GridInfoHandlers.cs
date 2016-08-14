@@ -25,11 +25,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Servers;
-using WhiteCore.Framework.Servers.HttpServer;
 using WhiteCore.Framework.Servers.HttpServer.Implementation;
 using WhiteCore.Framework.Services;
 using Nini.Config;
@@ -97,72 +95,103 @@ namespace WhiteCore.Services
                 IMoneyModule moneyModule = m_registry.RequestModuleInterface<IMoneyModule>();
                 IGridServerInfoService serverInfoService = m_registry.RequestModuleInterface<IGridServerInfoService>();
 
-                GridEconomyURI = GetConfig(m_config, "economy");
-                if (GridEconomyURI == "")
-                {
-                    if (moneyModule != null)
-                    {
-                        int port = moneyModule.ClientPort;
-                        if (port == 0)
-                            port = (int)MainServer.Instance.Port;
-                        GridEconomyURI = MainServer.Instance.FullHostName + ":" + port + "/";
-                    }
-                    else
-                        GridEconomyURI = MainServer.Instance.FullHostName + ":" + 9000 + "/"; //Fallback... we dunno
-                }
-                if (GridEconomyURI != "" && !GridEconomyURI.EndsWith("/"))
-                    GridEconomyURI += "/";
-                _info["economy"] = _info["helperuri"] = GridEconomyURI;
+                // grid details
+                _info["gridname"] = GridName = GetConfig(m_config, "gridname");
+                _info["gridnick"] = GridNick = GetConfig(m_config, "gridnick");
 
+                // login
                 GridLoginURI = GetConfig(m_config, "login");
                 if (GridLoginURI == "")
                 {
+                    GridLoginURI = MainServer.Instance.ServerURI + "/";
+
                     if (configCfg != null && configCfg.GetString("LLLoginHandlerPort", "") != "")
                     {
                         var port = configCfg.GetString("LLLoginHandlerPort", "");
                         if (port == "" || port == "0")
                             port = MainServer.Instance.Port.ToString();
-                        GridLoginURI = MainServer.Instance.FullHostName +
-                                       ":" + port + "/";
-                    }
-                    else
-                    {
-                        GridLoginURI = MainServer.Instance.ServerURI + "/";
+                        GridLoginURI = MainServer.Instance.FullHostName + ":" + port + "/";
                     }
                 }
-                else if (!GridLoginURI.EndsWith("/"))
-                    GridLoginURI += "/";
                 _info["login"] = GridLoginURI;
 
-                _info["welcome"] = GridWelcomeURI = GetConfig(m_config, "welcome");
+                // welcome
+                GridWelcomeURI = GetConfig(m_config, "welcome");
                 if (GridWelcomeURI == "" && webInterface != null)
-                    _info["welcome"] = GridWelcomeURI = webInterface.LoginScreenURL;
+                    GridWelcomeURI = webInterface.LoginScreenURL;
+                _info["welcome"] = CheckServerHost(GridWelcomeURI);
 
-                _info["register"] = GridRegisterURI = GetConfig(m_config, "register");
+                // registration
+                GridRegisterURI = GetConfig(m_config, "register");
                 if (GridRegisterURI == "" && webInterface != null)
-                    _info["register"] = GridRegisterURI = webInterface.RegistrationScreenURL;
+                    GridRegisterURI = webInterface.RegistrationScreenURL;
+                _info["register"] = CheckServerHost(GridRegisterURI);
 
-                _info["gridname"] = GridName = GetConfig(m_config, "gridname");
-                _info["gridnick"] = GridNick = GetConfig(m_config, "gridnick");
+                GridAboutURI = GetConfig(m_config, "about");
+                if (GridAboutURI == "" && webInterface != null)
+                    GridAboutURI = webInterface.HomeScreenURL;
+                _info["about"] = CheckServerHost(GridAboutURI);
 
-                _info["about"] = GridAboutURI = GetConfig(m_config, "about");
-                _info["help"] = GridHelpURI = GetConfig(m_config, "help");
-                _info["password"] = GridForgotPasswordURI = GetConfig(m_config, "forgottenpassword");
+                GridHelpURI = GetConfig(m_config, "help");
+                if (GridHelpURI == "" && webInterface != null)
+                    GridHelpURI = webInterface.HelpScreenURL;
+                _info["help"] = CheckServerHost(GridHelpURI);
+
+                GridForgotPasswordURI = GetConfig(m_config, "forgottenpassword");
+                if (GridForgotPasswordURI == "" && webInterface != null)
+                    GridForgotPasswordURI = webInterface.ForgotPasswordScreenURL;
+                 _info["password"] = CheckServerHost(GridForgotPasswordURI);
+
+                // mapping
                 GridMapTileURI = GetConfig(m_config, "map");
-
                 if (GridMapTileURI == "" && serverInfoService != null)
                     GridMapTileURI = serverInfoService.GetGridURI("MapService");
+
+                // Agent
                 AgentAppearanceURI = GetConfig(m_config, "AgentAppearanceURI");
                 if (AgentAppearanceURI == "" && serverInfoService != null)
                     AgentAppearanceURI = serverInfoService.GetGridURI("SSAService");
+
+                // profile
                 GridWebProfileURI = GetConfig(m_config, "webprofile");
                 if (GridWebProfileURI == "" && webInterface != null)
                     GridWebProfileURI = webInterface.WebProfileURL;
+
+                // economy
+                GridEconomyURI = GetConfig(m_config, "economy");
+                if (GridEconomyURI == "")
+                {
+
+                    GridEconomyURI = MainServer.Instance.ServerURI + "/";           // assume default... 
+
+                    if (moneyModule != null)
+                    {
+                        int port = moneyModule.ClientPort;
+                        if (port == 0)
+                            port = (int) MainServer.Instance.Port;
+
+                        GridEconomyURI = MainServer.Instance.FullHostName + ":" + port + "/";
+                    }
+                }
+                _info["economy"] = _info["helperuri"] = CheckServerHost(GridEconomyURI);
+
+
+                // misc.. these must be set to be used
                 GridSearchURI = GetConfig(m_config, "search");
+                _info["search"] = CheckServerHost(GridSearchURI);
+
                 GridDestinationURI = GetConfig(m_config, "destination");
+                _info["destination"] = CheckServerHost(GridDestinationURI);
+
                 GridMarketplaceURI = GetConfig(m_config, "marketplace");
+                _info["marketplace"] = CheckServerHost(GridMarketplaceURI);
+
                 GridTutorialURI = GetConfig(m_config, "tutorial");
+                _info["tutorial"] = CheckServerHost(GridTutorialURI);
+
                 GridSnapshotConfigURI = GetConfig(m_config, "snapshotconfig");
+                _info["snapshotconfig"] = CheckServerHost(GridSnapshotConfigURI);
+
             }
             catch (Exception)
             {
@@ -172,6 +201,12 @@ namespace WhiteCore.Services
 
             MainConsole.Instance.DebugFormat("[GRID INFO SERVICE]: Grid info service initialized with {0} keys",
                                              _info.Count);
+        }
+
+        string CheckServerHost(string uri)
+        {
+            // if uri is in the format http://ServersHostnmae:nnnn/ replace with the current Hostname
+            return uri.Replace ("ServersHostname", MainServer.Instance.HostName);
         }
 
         private string GetConfig(IConfigSource config, string p)
@@ -191,7 +226,7 @@ namespace WhiteCore.Services
                 MainConsole.Instance.WarnFormat("[GRID INFO SERVICE]: {0}: {1}", k, _info[k]);
             }
         }
-
+        
         public XmlRpcResponse XmlRpcGridInfoMethod(XmlRpcRequest request, IPEndPoint remoteClient)
         {
             XmlRpcResponse response = new XmlRpcResponse();

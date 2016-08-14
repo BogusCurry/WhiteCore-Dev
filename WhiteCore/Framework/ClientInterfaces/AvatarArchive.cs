@@ -25,9 +25,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework.Modules;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
+using WhiteCore.Framework.Modules;
 
 namespace WhiteCore.Framework.ClientInterfaces
 {
@@ -44,6 +44,11 @@ namespace WhiteCore.Framework.ClientInterfaces
         public bool IsPublic;
 
         /// <summary>
+        ///     true/false if it is a portabl;e archive
+        /// </summary>
+        public bool IsPortable;
+
+        /// <summary>
         ///     Name of the archive
         /// </summary>
         public string FileName;
@@ -58,6 +63,11 @@ namespace WhiteCore.Framework.ClientInterfaces
         /// </summary>
         public UUID Snapshot;
 
+        /// <summary>
+        ///     filename of the local snapshot that shows off this archive (for portable use)
+        /// </summary>
+        public string LocalSnapshot;
+
         public OSDMap AssetsMap;
 
         public OSDMap ItemsMap;
@@ -69,10 +79,11 @@ namespace WhiteCore.Framework.ClientInterfaces
             AssetsMap = ((OSDMap)map["Assets"]);
             ItemsMap = ((OSDMap)map["Items"]);
             BodyMap = ((OSDMap)map["Body"]);
-
             FolderName = map["FolderName"];
             Snapshot = map["Snapshot"];
+            LocalSnapshot = map ["LocalSnapshot"];
             IsPublic = map["Public"];
+            IsPortable = map["Portable"];
         }
 
         public override OSDMap ToOSD()
@@ -84,7 +95,9 @@ namespace WhiteCore.Framework.ClientInterfaces
             map["Body"] = BodyMap;
             map["FolderName"] = FolderName;
             map["Snapshot"] = Snapshot;
+            map["LocalSnapshot"] = LocalSnapshot;
             map["Public"] = IsPublic;
+            map["Portable"] = IsPortable;
 
             return map;
         }

@@ -38,7 +38,7 @@ namespace WhiteCore.DataManager.Migration.Migrators.Auth
             Version = new Version(0, 0, 5);
             MigrationName = "Auth";
 
-            schema = new List<SchemaDefinition>();
+            Schema = new List<SchemaDefinition>();
 
             //
             // Change summery:
@@ -52,8 +52,8 @@ namespace WhiteCore.DataManager.Migration.Migrators.Auth
                 ColDef("passwordSalt", ColumnTypes.String512),
                 ColDef("accountType", ColumnTypes.Char32)
                                   ), IndexDefs(
-                                      IndexDef(new string[2] {"UUID", "accountType"}, IndexType.Primary),
-                                      IndexDef(new string[1] {"passwordHash"}, IndexType.Index)
+                                        IndexDef(new string[2] {"UUID", "accountType"}, IndexType.Primary),
+                                        IndexDef(new string[1] {"passwordHash"}, IndexType.Index, 255)
                                          ));
 
             RemoveSchema("tokens");

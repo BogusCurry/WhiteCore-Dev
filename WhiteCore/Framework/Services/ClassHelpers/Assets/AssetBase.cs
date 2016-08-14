@@ -25,16 +25,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using OpenMetaverse;
+using OpenMetaverse.StructuredData;
+using ProtoBuf;
 using WhiteCore.Framework.ClientInterfaces;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Utilities;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
-using ProtoBuf;
-using System;
-using System.Diagnostics;
-using System.Security.Cryptography;
 
 namespace WhiteCore.Framework.Services.ClassHelpers.Assets
 {
@@ -42,7 +42,7 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Assets
     public enum AssetFlags
     {
         Normal = 0, // Immutable asset
-        Maptile = 1, // Depriated, use Deletable instead: What it says
+        Maptile = 1, // Deprecated, use Deletable instead: What it says
         Rewritable = 2, // Content can be rewritten
         Collectable = 4, // Can be GC'ed after some time
         Deletable = 8, // The asset can be deleted
@@ -58,10 +58,10 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Assets
     [Serializable, ProtoContract(UseProtoMembersOnly = false)]
     public class AssetBase : IDataTransferable, IDisposable
     {
-        private static readonly SHA256Managed SHA256Managed = new SHA256Managed();
-        private string idString = "";
-        private byte[] myData = new byte[] {};
-        private string myHashCode = "";
+        static readonly SHA256Managed SHA256Managed = new SHA256Managed();
+        string idString = "";
+        byte[] myData = new byte[] {};
+        string myHashCode = "";
 
         #region Initiation
 
@@ -94,7 +94,7 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Assets
             Initiate(assetID.ToString(), name, assetType, creatorID);
         }
 
-        private void SimpleInitialize()
+        void SimpleInitialize()
         {
             DatabaseTable = "assets";
             ID = UUID.Zero;
@@ -157,10 +157,6 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Assets
                      TypeAsset == AssetType.Texture ||
                      TypeAsset == AssetType.TextureTGA ||
                      TypeAsset == AssetType.Folder ||
-                     TypeAsset == AssetType.RootFolder ||
-                     TypeAsset == AssetType.LostAndFoundFolder ||
-                     TypeAsset == AssetType.SnapshotFolder ||
-                     TypeAsset == AssetType.TrashFolder ||
                      TypeAsset == AssetType.ImageJPEG ||
                      TypeAsset == AssetType.ImageTGA ||
                      TypeAsset == AssetType.LSLBytecode);
@@ -179,6 +175,32 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Assets
                                           && TypeAsset != AssetType.Landmark);
             }
         }
+
+        public string AssetTypeInfo()
+        {
+            switch (TypeAsset)
+            {
+            case AssetType.Animation:           return "Animation";
+            case AssetType.Bodypart:            return "Bodypart";
+            case AssetType.CallingCard:         return "CallingCard";
+            case AssetType.Clothing:            return "Clothing";
+            case AssetType.Gesture:             return "Gesture";
+            case AssetType.Landmark:            return "Landmark";
+            case AssetType.LSLText:             return "Script";
+            case AssetType.Mesh:                return "Mesh";
+            case AssetType.Notecard:            return "Notecard";
+            case AssetType.Object:              return "Object";
+            case AssetType.Sound:               return "Sound";
+            case AssetType.Texture:             return "Texture";
+            case AssetType.TextureTGA:          return "TGA Texture";
+            case AssetType.Simstate:            return "Simstate info";
+            case AssetType.ImageJPEG:           return "JPG image";
+            case AssetType.ImageTGA:            return "TGA image";
+            default:
+                return "Unknown asset";
+            }
+        }
+
 
         #endregion
 

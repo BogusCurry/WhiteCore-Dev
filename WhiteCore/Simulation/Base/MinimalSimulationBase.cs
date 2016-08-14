@@ -25,7 +25,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Timers;
+using Nini.Config;
+using OpenMetaverse;
 using WhiteCore.Framework.Configuration;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.ModuleLoader;
@@ -38,12 +43,6 @@ using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Services.ClassHelpers.Other;
 using WhiteCore.Framework.Utilities;
 using WhiteCore.Services.DataService;
-using Nini.Config;
-using OpenMetaverse;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Timers;
 
 namespace WhiteCore.Simulation.Base
 {
@@ -78,6 +77,35 @@ namespace WhiteCore.Simulation.Base
         public string Version
         {
             get { return m_version; }
+        }
+
+        /// <summary>
+        /// Is this instance a grid server.
+        /// </summary>
+        /// <value>true</value>
+        /// <c>false</c>
+        public bool IsGridServer
+        {
+            get { return m_configurationLoader.IsGridServer; }
+        }
+
+        protected string m_defaultDataPath = Constants.DEFAULT_DATA_DIR;
+        public string DefaultDataPath
+        { 
+            get { return m_defaultDataPath;}
+            set { m_defaultDataPath = value;}
+        }
+
+        protected int m_mapcenter_x = Constants.DEFAULT_REGIONSTART_X;
+        public int MapCenterX {
+            get { return m_mapcenter_x; }
+            set { m_mapcenter_x = value; }
+        }
+
+        protected int m_mapcenter_y = Constants.DEFAULT_REGIONSTART_Y;
+        public int MapCenterY {
+            get { return m_mapcenter_y; }
+            set { m_mapcenter_y = value; }
         }
 
         protected IRegistryCore m_applicationRegistry = new RegistryCore();
@@ -126,7 +154,7 @@ namespace WhiteCore.Simulation.Base
             get { return m_commandLineParameters; }
         }
 
-        protected string m_pidFile = String.Empty;
+        protected string m_pidFile = string.Empty;
 
         protected string m_consolePrompt = "";
         protected List<Type> m_dataPlugins;
@@ -151,14 +179,13 @@ namespace WhiteCore.Simulation.Base
         {
             m_commandLineParameters = cmdParams;
             m_StartupTime = DateTime.Now;
-            m_version = VersionInfo.Version + " (" + Util.GetRuntimeInformation() + ")";
+            m_version = VersionInfo.Version;
             m_original_config = originalConfig;
             m_config = configSource;
             m_configurationLoader = configLoader;
 
             // This thread will go on to become the console listening thread
-            if (System.Threading.Thread.CurrentThread.Name != "ConsoleThread")
-                System.Threading.Thread.CurrentThread.Name = "ConsoleThread";
+            System.Threading.Thread.CurrentThread.Name = "ConsoleThread";
 
             //Register the interface
             ApplicationRegistry.RegisterModuleInterface<ISimulationBase>(this);
@@ -178,10 +205,15 @@ namespace WhiteCore.Simulation.Base
         {
             IConfig startupConfig = m_config.Configs["Startup"];
 
-            int stpMaxThreads = 15;
+            int stpMinThreads = 15;
+            int stpMaxThreads = 300;
 
             if (startupConfig != null)
             {
+                m_defaultDataPath = startupConfig.GetString("DataDirectory", Constants.DEFAULT_DATA_DIR);
+                if (m_defaultDataPath == "")
+                    m_defaultDataPath = Constants.DEFAULT_DATA_DIR;
+                
                 m_startupCommandsFile = startupConfig.GetString("startup_console_commands_file", "startup_commands.txt");
                 m_shutdownCommandsFile = startupConfig.GetString("shutdown_console_commands_file",
                                                                  "shutdown_commands.txt");
@@ -189,47 +221,61 @@ namespace WhiteCore.Simulation.Base
                 m_TimerScriptFileName = startupConfig.GetString("timer_Script", "disabled");
                 m_TimerScriptTime = startupConfig.GetInt("timer_time", m_TimerScriptTime);
 
-                string pidFile = startupConfig.GetString("PIDFile", String.Empty);
-                if (pidFile != String.Empty)
+                string pidFile = startupConfig.GetString("PIDFile", string.Empty);
+                if (pidFile != string.Empty)
                     CreatePIDFile(pidFile);
             }
 
             IConfig SystemConfig = m_config.Configs["System"];
             if (SystemConfig != null)
             {
-                string asyncCallMethodStr = SystemConfig.GetString("AsyncCallMethod", String.Empty);
+                string asyncCallMethodStr = SystemConfig.GetString("AsyncCallMethod", string.Empty);
                 FireAndForgetMethod asyncCallMethod;
-                if (!String.IsNullOrEmpty(asyncCallMethodStr) &&
+                if (!string.IsNullOrEmpty(asyncCallMethodStr) &&
                     Utils.EnumTryParse(asyncCallMethodStr, out asyncCallMethod))
                     Util.FireAndForgetMethod = asyncCallMethod;
 
-                stpMaxThreads = SystemConfig.GetInt("MaxPoolThreads", 15);
+                stpMinThreads = SystemConfig.GetInt("MinPoolThreads", stpMinThreads);
+                stpMaxThreads = SystemConfig.GetInt("MaxPoolThreads", stpMaxThreads);
+
+                if (stpMinThreads < 2)
+                    stpMinThreads = 2;
+                if (stpMaxThreads < 2)
+                    stpMaxThreads = 2;
+                if (stpMinThreads > stpMaxThreads)
+                    stpMinThreads = stpMaxThreads;           
+            }
+
+            var mapConfig = m_config.Configs ["WebInterface"];
+            if (mapConfig != null) {
+                m_mapcenter_x = mapConfig.GetInt ("mapcenter_x", m_mapcenter_x);
+                m_mapcenter_y = mapConfig.GetInt ("mapcenter_y", m_mapcenter_y);
             }
 
             if (Util.FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
-                Util.InitThreadPool(stpMaxThreads);
+                Util.InitThreadPool(stpMinThreads, stpMaxThreads);
 
             //Set up console forcefully
-            WhiteCore.Services.BaseService consoleService = new WhiteCore.Services.BaseService();
+            Services.BaseService consoleService = new Services.BaseService();
             consoleService.PreStartup(this);
 
             //Fix the default prompt
-            if (MainConsole.Instance != null)
-            {
-                MainConsole.Instance.DefaultPrompt = m_consolePrompt;
-                MainConsole.Instance.Info(string.Format("[MINWhiteCore]: STARTING MIN WhiteCore ({0})...",
-                                                        (IntPtr.Size == 4 ? "x86" : "x64")));
-                MainConsole.Instance.Info("[MINWhiteCore]: Version: " + Version + "\n");
-            }
+             MainConsole.Instance.DefaultPrompt = m_consolePrompt;
         }
 
         /// <summary>
-        ///     Performs initialisation of the application, such as loading the HTTP server and modules
+        ///     Performs initialization of the application, such as loading the HTTP server and modules
         /// </summary>
         public virtual void Startup()
         {
-            MainConsole.Instance.Info("[MINWhiteCore]: Startup completed in " +
-                                      (DateTime.Now - this.StartupTime).TotalSeconds);
+            PrintFileToConsole (Path.Combine(DefaultDataPath,"startuplogo.txt"));
+
+            MainConsole.Instance.InfoFormat ("[Mini WhiteCore-Sim]: Starting Mini WhiteCore-Sim ({0})...",
+                                             (IntPtr.Size == 4 ? "x86" : "x64"));
+            MainConsole.Instance.Info ("[Mini WhiteCore-Sim]: Version : " + Version + "\n");
+            MainConsole.Instance.Info ("[Mini WhiteCore-Sim]: Git Base: " + VersionInfo.GitVersion + "\n");
+            MainConsole.Instance.Info ("[Mini WhiteCore-Sim]: Startup completed in " +
+                                       (DateTime.Now - StartupTime).TotalSeconds);
         }
 
         public virtual ISimulationBase Copy()
@@ -243,8 +289,7 @@ namespace WhiteCore.Simulation.Base
         public virtual void Run()
         {
             //Start the prompt
-            if (MainConsole.Instance != null)
-                MainConsole.Instance.ReadConsole();
+            MainConsole.Instance.ReadConsole();
         }
 
         /// <summary>
@@ -262,15 +307,33 @@ namespace WhiteCore.Simulation.Base
             if (m_Servers.TryGetValue(port, out server) && server.Secure == useHTTPS)
                 return server;
 
-            string hostName =
-                m_config.Configs["Network"].GetString("HostName",
-                                                      "http" + (useHTTPS ? "s" : "") + "://" + Utilities.GetExternalIp());
             uint threadCount = m_config.Configs["Network"].GetUInt("HttpThreadCount", 5);
-            //Clean it up a bit
-            if (hostName.StartsWith("http://") || hostName.StartsWith("https://"))
-                hostName = hostName.Replace("https://", "").Replace("http://", "");
-            if (hostName.EndsWith("/"))
-                hostName = hostName.Remove(hostName.Length - 1, 1);
+
+            // find out where we live
+            string hostName;
+
+            // been here before?
+            if (Utilities.HostName == "")
+            {
+                hostName = m_config.Configs ["Network"].GetString ("HostName", "0.0.0.0");
+
+                if ((hostName == "") || (hostName == "0.0.0.0"))
+                {
+                    MainConsole.Instance.Info ("[Network]: Retrieving the external IP address");
+                    hostName = "http" + (useHTTPS ? "s" : "") + "://" + Utilities.GetExternalIp ();
+                }
+            
+                //Clean it up a bit
+                if (hostName.StartsWith ("http://", StringComparison.OrdinalIgnoreCase) || hostName.StartsWith ("https://", StringComparison.OrdinalIgnoreCase))
+                    hostName = hostName.Replace ("https://", "").Replace ("http://", "");
+                if (hostName.EndsWith ("/", StringComparison.Ordinal))
+                    hostName = hostName.Remove (hostName.Length - 1, 1);
+                
+                // save this for posterity in case it is needed
+                MainConsole.Instance.Info ("[Network]: Network IP address has been set to " + hostName);
+                Utilities.HostName = hostName;
+            } else
+                hostName = Utilities.HostName;
 
             server = new BaseHttpServer(port, hostName, useHTTPS, threadCount);
 
@@ -332,16 +395,16 @@ namespace WhiteCore.Simulation.Base
         public void RunStartupCommands()
         {
             //Draw the file on the console
-            PrintFileToConsole("startuplogo.txt");
+            PrintFileToConsole(m_startupCommandsFile);
             //Run Startup Commands
-            if (!String.IsNullOrEmpty(m_startupCommandsFile))
+            if (!string.IsNullOrEmpty(m_startupCommandsFile))
                 RunCommandScript(m_startupCommandsFile);
 
             // Start timer script (run a script every xx seconds)
             if (m_TimerScriptFileName != "disabled")
             {
-                Timer newtimername = new Timer {Enabled = true, Interval = m_TimerScriptTime*60*1000};
-                newtimername.Elapsed += RunAutoTimerScript;
+                m_TimerScriptTimer = new Timer {Enabled = true, Interval = m_TimerScriptTime*60*1000};
+                m_TimerScriptTimer.Elapsed += RunAutoTimerScript;
             }
         }
 
@@ -349,7 +412,7 @@ namespace WhiteCore.Simulation.Base
         ///     Opens a file and uses it as input to the console command parser.
         /// </summary>
         /// <param name="fileName">name of file to use as input to the console</param>
-        private void PrintFileToConsole(string fileName)
+        void PrintFileToConsole(string fileName)
         {
             if (File.Exists(fileName))
             {
@@ -368,7 +431,7 @@ namespace WhiteCore.Simulation.Base
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void RunAutoTimerScript(object sender, EventArgs e)
+        void RunAutoTimerScript(object sender, EventArgs e)
         {
             RunCommandScript(m_TimerScriptFileName);
         }
@@ -382,30 +445,60 @@ namespace WhiteCore.Simulation.Base
         {
             if (MainConsole.Instance == null)
                 return;
-            MainConsole.Instance.Commands.AddCommand("quit", "quit", "Quit the application", HandleQuit, false, true);
-
-            MainConsole.Instance.Commands.AddCommand("shutdown", "shutdown", "Quit the application", HandleQuit, false, true);
-
-            MainConsole.Instance.Commands.AddCommand("show info", "show info",
-                                                     "Show server information (e.g. startup path)", HandleShowInfo, false, true);
-            MainConsole.Instance.Commands.AddCommand("show version", "show version", "Show server version",
-                                                     HandleShowVersion, false, true);
-
-            MainConsole.Instance.Commands.AddCommand("reload config", "reload config", "Reloads .ini file configuration",
-                                                     HandleConfigRefresh, false, true);
-
-            MainConsole.Instance.Commands.AddCommand("set timer script interval", "set timer script interval",
-                                                     "Set the interval for the timer script (in minutes).",
-                                                     HandleTimerScriptTime, false, true);
-
-            MainConsole.Instance.Commands.AddCommand("force GC", "force GC", "Forces garbage collection.", HandleForceGC, false, true);
-            MainConsole.Instance.Commands.AddCommand("run configurator", "run configurator", "Runs WhiteCore.Configurator.",
-                                                     runConfig, false, true);
+            MainConsole.Instance.Commands.AddCommand(
+                "quit", 
+                "quit", 
+                "Quit the application", 
+                HandleQuit, false, true);
+            
+            MainConsole.Instance.Commands.AddCommand(
+                "shutdown",
+                "shutdown", 
+                "Quit the application", 
+                HandleQuit, false, true);
+            
+            MainConsole.Instance.Commands.AddCommand(
+                "show info",
+                "show info",
+                "Show server information (e.g. startup path)", 
+                HandleShowInfo, false, true);
+            
+            MainConsole.Instance.Commands.AddCommand(
+                "show version",
+                "show version", 
+                "Show server version",
+                HandleShowVersion, false, true);
+            
+            MainConsole.Instance.Commands.AddCommand(
+                "reload config",
+                "reload config", 
+                "Reloads .ini file configuration",
+                HandleConfigRefresh, false, true);
+            
+            MainConsole.Instance.Commands.AddCommand(
+                "set timer script interval",
+                "set timer script interval",
+                "Set the interval for the timer script (in minutes).",
+                HandleTimerScriptTime, false, true);
+            
+            MainConsole.Instance.Commands.AddCommand(
+                "force GC",
+                "force GC", 
+                "Forces garbage collection.", 
+                HandleForceGC, false, true);
+            
+            MainConsole.Instance.Commands.AddCommand(
+                "run configurator",
+                "run configurator", 
+                "Runs WhiteCore.Configurator.",
+                runConfig, false, true);
         }
 
-        private void HandleQuit(IScene scene, string[] args)
+        void HandleQuit(IScene scene, string[] args)
         {
-            Shutdown(true);
+            var ok = MainConsole.Instance.Prompt ("[Console]: Shutdown the simulator. Are you sure? (yes/no)", "no").ToLower();
+            if (ok.StartsWith ("y", StringComparison.Ordinal))
+                Shutdown(true);
         }
 
         /// <summary>
@@ -416,14 +509,15 @@ namespace WhiteCore.Simulation.Base
         {
             if (File.Exists(fileName))
             {
-                MainConsole.Instance.Info("[COMMANDFILE]: Running " + fileName);
+                MainConsole.Instance.Info("[Commandfile]: Running " + fileName);
                 List<string> commands = new List<string>();
                 using (StreamReader readFile = File.OpenText(fileName))
                 {
                     string currentCommand;
                     while ((currentCommand = readFile.ReadLine()) != null)
                     {
-                        if (currentCommand != String.Empty)
+                        if ( (currentCommand != string.Empty) &&
+                            (!currentCommand.StartsWith (";", StringComparison.Ordinal)) )
                         {
                             commands.Add(currentCommand);
                         }
@@ -431,7 +525,7 @@ namespace WhiteCore.Simulation.Base
                 }
                 foreach (string currentCommand in commands)
                 {
-                    MainConsole.Instance.Info("[COMMANDFILE]: Running '" + currentCommand + "'");
+                    MainConsole.Instance.Info("[Command file]: Running '" + currentCommand + "'");
                     MainConsole.Instance.RunCommand(currentCommand);
                 }
             }
@@ -440,7 +534,7 @@ namespace WhiteCore.Simulation.Base
         public virtual void HandleForceGC(IScene scene, string[] cmd)
         {
             GC.Collect();
-            MainConsole.Instance.Warn("Garbage collection finished");
+            MainConsole.Instance.Warn("[Garbage Collection Service]: Garbage collection finished");
         }
 
         public virtual void runConfig(IScene scene, string[] cmd)
@@ -452,53 +546,58 @@ namespace WhiteCore.Simulation.Base
         {
             if (cmd.Length != 5)
             {
-                MainConsole.Instance.Warn("[CONSOLE]: Timer Interval command did not have enough parameters.");
+                MainConsole.Instance.Warn("[Console]: Timer Interval command did not have enough parameters.");
                 return;
             }
-            MainConsole.Instance.Warn("[CONSOLE]: Set Timer Interval to " + cmd[4]);
-            m_TimerScriptTime = int.Parse(cmd[4]);
-            m_TimerScriptTimer.Enabled = false;
-            m_TimerScriptTimer.Interval = m_TimerScriptTime*60*1000;
-            m_TimerScriptTimer.Enabled = true;
+
+            if (int.TryParse (cmd [4], out m_TimerScriptTime))
+            {
+                m_TimerScriptTimer.Enabled = false;
+                m_TimerScriptTimer.Interval = m_TimerScriptTime * 60 * 1000;
+                m_TimerScriptTimer.Enabled = true;
+                MainConsole.Instance.Warn ("[Console]: Set Timer Interval to " + cmd [4]);
+            }
         }
 
         public virtual void HandleConfigRefresh(IScene scene, string[] cmd)
         {
-            //Rebuild the configs
+            //Rebuild the configuration
             m_config = m_configurationLoader.LoadConfigSettings(m_original_config);
 
-            string hostName =
-                m_config.Configs["Network"].GetString("HostName", "http://127.0.0.1");
-            //Clean it up a bit
-            // these are doing nothing??
-            hostName.Replace("http://", "");
-            hostName.Replace("https://", "");
-            if (hostName.EndsWith("/"))
-                hostName = hostName.Remove(hostName.Length - 1, 1);
-            foreach (IHttpServer server in m_Servers.Values)
+            if (m_config != null)
             {
-                server.HostName = hostName;
+                string hostName = m_config.Configs ["Network"].GetString ("HostName", "127.0.0.1");
+                //Clean it up a bit
+                // these are doing nothing??
+                hostName = hostName.Replace ("http://", "").Replace ("https://", "");
+                if (hostName.EndsWith ("/", StringComparison.Ordinal))
+                    hostName = hostName.Remove (hostName.Length - 1, 1);
+                
+                foreach (IHttpServer server in m_Servers.Values)
+                {
+                    server.HostName = hostName;
+                }
+                MainConsole.Instance.Info ("[WhiteCore-Sim Configuration]: Finished reloading configuration.");
             }
-            MainConsole.Instance.Info("Finished reloading configuration.");
         }
 
         public virtual void HandleShowInfo(IScene scene, string[] cmd)
         {
+            PrintFileToConsole (Path.Combine (m_defaultDataPath, "/startuplogo.txt"));
+
             MainConsole.Instance.Info("Version: " + m_version);
             MainConsole.Instance.Info("Startup directory: " + Environment.CurrentDirectory);
         }
 
         public virtual void HandleShowVersion(IScene scene, string[] cmd)
         {
-            MainConsole.Instance.Info(
-                String.Format(
-                    "Version: {0}", m_version));
+            MainConsole.Instance.InfoFormat("Version: {0}", m_version);
         }
 
         #endregion
 
         /// <summary>
-        ///     Should be overriden and referenced by descendents if they need to perform extra shutdown processing
+        ///     Should be overridden and referenced by descendents if they need to perform extra shutdown processing
         ///     Performs any last-minute sanity checking and shuts down the region server
         /// </summary>
         public virtual void Shutdown(bool close)
@@ -508,7 +607,7 @@ namespace WhiteCore.Simulation.Base
                 try
                 {
                     RemovePIDFile();
-                    if (m_shutdownCommandsFile != String.Empty)
+                    if (m_shutdownCommandsFile != string.Empty)
                     {
                         RunCommandScript(m_shutdownCommandsFile);
                     }
@@ -549,10 +648,10 @@ namespace WhiteCore.Simulation.Base
                 }
 
                 if (close)
-                    MainConsole.Instance.Info("[SHUTDOWN]: Terminating");
+                    MainConsole.Instance.Info("[Shut Down]: Terminating");
 
-                MainConsole.Instance.Info("[SHUTDOWN]: Shutdown processing on main thread complete. " +
-                                          (close ? " Exiting..." : ""));
+                MainConsole.Instance.Info("[Shut Down]: Shut down processing on main thread complete. " +
+                                          (close ? " Exiting WhiteCore-Sim..." : ""));
 
                 if (close)
                     Environment.Exit(0);
@@ -568,18 +667,21 @@ namespace WhiteCore.Simulation.Base
         /// <param name="path"></param>
         protected void CreatePIDFile(string path)
         {
+            FileStream fs = null;
             try
             {
                 string pidstring = System.Diagnostics.Process.GetCurrentProcess().Id.ToString();
-                FileStream fs = File.Create(path);
+                fs = File.Create(path);
                 System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
-                Byte[] buf = enc.GetBytes(pidstring);
+                byte[] buf = enc.GetBytes(pidstring);
                 fs.Write(buf, 0, buf.Length);
                 fs.Close();
                 m_pidFile = path;
             }
             catch (Exception)
             {
+                if (fs != null)
+                    fs.Close();
             }
         }
 
@@ -588,12 +690,12 @@ namespace WhiteCore.Simulation.Base
         /// </summary>
         protected void RemovePIDFile()
         {
-            if (m_pidFile != String.Empty)
+            if (m_pidFile != string.Empty)
             {
                 try
                 {
                     File.Delete(m_pidFile);
-                    m_pidFile = String.Empty;
+                    m_pidFile = string.Empty;
                 }
                 catch (Exception)
                 {

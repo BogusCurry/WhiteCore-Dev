@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Contributors, http://opensimulator.org/
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -9,7 +9,7 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the OpenSimulator Project nor the
+ *     * Neither the name of the WhiteCore-Sim Project nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
@@ -108,7 +108,7 @@ namespace WhiteCore.Framework.Servers.HttpServer.Implementation
             get { return _contentType; }
         }
 
-        private string _contentType;
+        string _contentType;
 
         public HttpCookieCollection Cookies
         {
@@ -147,14 +147,14 @@ namespace WhiteCore.Framework.Servers.HttpServer.Implementation
             get { return _queryString; }
         }
 
-        private NameValueCollection _queryString;
+        NameValueCollection _queryString;
 
         public Hashtable Query
         {
             get { return _query; }
         }
 
-        private Hashtable _query;
+        Hashtable _query;
 
         /// <value>
         ///     POST request values, if applicable
@@ -193,6 +193,9 @@ namespace WhiteCore.Framework.Servers.HttpServer.Implementation
             {
                 foreach (string item in _request.QueryString.Keys)
                 {
+                    if (item == null)
+                        continue;
+
                     try
                     {
                         _queryString.Add(item, _request.QueryString[item]);
@@ -208,7 +211,7 @@ namespace WhiteCore.Framework.Servers.HttpServer.Implementation
             }
             catch (Exception)
             {
-                MainConsole.Instance.Error("[OSHttpRequest]: Error parsing querystring");
+                MainConsole.Instance.Error("[OSHttpRequest]: Error parsing query-string");
             }
 
             if (ContentType != null && ContentType.StartsWith("multipart/form-data"))

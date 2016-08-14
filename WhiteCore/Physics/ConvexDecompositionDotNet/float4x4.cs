@@ -26,11 +26,9 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
-namespace OpenSim.Region.Physics.ConvexDecompositionDotNet
+namespace WhiteCore.Physics.ConvexDecompositionDotNet
 {
     public class float4x4
     {

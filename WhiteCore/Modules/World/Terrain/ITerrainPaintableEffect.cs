@@ -25,11 +25,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
-using WhiteCore.Framework.Modules;
-using WhiteCore.Framework.SceneInfo;
 using OpenMetaverse;
-using WhiteCore.Framework;
+using WhiteCore.Framework.Modules;
+
 
 namespace WhiteCore.Modules.Terrain
 {

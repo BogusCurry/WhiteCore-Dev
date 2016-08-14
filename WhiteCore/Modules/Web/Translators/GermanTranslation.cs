@@ -1,4 +1,31 @@
-﻿namespace WhiteCore.Modules.Web.Translators
+﻿/*
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://aurora-sim.org
+ * See CONTRIBUTORS.TXT for a full list of copyright holders.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the WhiteCore-Sim Project nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+namespace WhiteCore.Modules.Web.Translators
 {
     public class GermanTranslation : ITranslator
     {
@@ -11,130 +38,127 @@
         {
             switch (key)
             {
-                case "GridStatus":
-                    return "Grid Status";
-                case "Online":
-                    return "Online";
-                case "Offline":
-                    return "Offline";
-                case "TotalUserCount":
-                    return "Einwohner";
-                case "TotalRegionCount":
-                    return "Regionen";
-                case "UniqueVisitors":
-                    return "Aktive Nutzer letzten 30 Tage";
-                case "OnlineNow":
-                    return "Jetzt Online";
-                case "HyperGrid":
-                    return "HyperGrid (HG)";
-                case "Voice":
-                    return "Stimme";
-                case "Currency":
-                    return "Devisen";
-                case "Disabled":
-                    return "Deaktiviert";
-                case "Enabled":
-                    return "Aktiviert";
-                case "News":
-                    return "Nachrichten";
-                case "Region":
-                    return "Region";
-                case "Login":
-                    return "Einloggen";
-                case "UserName":
-                    return "Nutzername";
-                case "UserNameText":
-                    return "Nutzername";
-                case "Password":
-                    return "Password";
-                case "PasswordText":
-                    return "Password";
-                case "PasswordConfirmation":
-                    return "Password Confirmation";
-                case "ForgotPassword":
-                    return "Passwort vergessen?";
-                case "Submit":
-                    return "Einreichen";
+                // Generic
+                case "No": return "nein";
+                case "Yes": return "ja";
+                case "Submit": return "Einreichen";
+                case "Accept": return "Akzeptieren";
+                case "Save": return "Speichern";
+                case "FirstText": return "Erste";
+                case "BackText": return "Zurück";
+                case "NextText": return "Vor";
+                case "LastText": return "Letzte";
+                case "CurrentPageText": return "Aktuelle Seite";
+                case "MoreInfoText": return "Mehr Informationen";
+                case "NoDetailsText": return "Keine Angaben gefunden...";
+            case "MoreInfo":
+                return "Mehr Informationen";
 
+            case "ObjectNameText": return "Objekt";
+            case "LocationText": return "Ort";
+            case "UUIDText": return "UUID";
+            case "DetailsText": return "Beschreibung";
+            case "NotesText": return "Aufzeichnungen";
+            case "SaveUpdates": return "Sparen Sie Aktuelles";
+            case "ActiveText": return "Activ";
+            case "CheckedText": return "Geprüft";
+            case "CategoryText": return "Kategorie";
+            case "SummaryText": return "Zusammenfassung";
+                
+                // Status information
+                case "GridStatus": return "Grid Status";
+                case "Online": return "Online";
+                case "Offline": return "Offline";
+                case "TotalUserCount": return "Einwohner";
+                case "TotalRegionCount": return "Regionen";
+                case "UniqueVisitors": return "Aktive Nutzer letzten 30 Tage";
+                case "OnlineNow": return "Jetzt Online";
+                case "HyperGrid": return "HyperGrid (HG)";
+                case "Voice": return "Stimme";
+                case "Currency": return "Devisen";
+                case "Disabled": return "Deaktiviert";
+                case "Enabled": return "Aktiviert";
+                case "News": return "Nachrichten";
+                case "Region": return "Region";
 
-                case "SpecialWindowTitleText":
-                    return "Special Info Window Title";
-                case "SpecialWindowTextText":
-                    return "Special Info Window Text";
-                case "SpecialWindowColorText":
-                    return "Special Info Window Color";
-                case "SpecialWindowStatusText":
-                    return "Special Info Window Status";
-                case "WelcomeScreenManagerFor":
-                    return "Welcome Screen Manager For";
-                case "ChangesSavedSuccessfully":
-                    return "Changes Saved Successfully";
+                // User login
+                case "Login": return "Einloggen";
+                case "UserName": return "Nutzername";
+                case "UserNameText": return "Nutzername";
+                case "Password": return "Password";
+                case "PasswordText": return "Password";
+                case "PasswordConfirmation": return "Password Confirmation";
+                case "ForgotPassword": return "Passwort vergessen?";
 
+                // Special windows
+                case "SpecialWindowTitleText": return "Spezieller Title des Info Fensters";
+                case "SpecialWindowTextText": return "Spezieller Text des Info Fensters";
+                case "SpecialWindowColorText": return "Spezielle Farbe des Info Fensters";
+                case "SpecialWindowStatusText": return "Spezieller Status des Info Fensters";
+                case "WelcomeScreenManagerFor": return "Willkommen Ansichtsmanager für";
+                case "ChangesSavedSuccessfully": return "Änderungen erfolgreich gespeichert";
 
-                case "AvatarNameText":
-                    return "Avatar Name";
-                case "AvatarScopeText":
-                    return "Avatar Scope ID";
-                case "FirstNameText":
-                    return "Your First Name";
-                case "LastNameText":
-                    return "Your Last Name";
-                case "UserAddressText":
-                    return "Your Address";
-                case "UserZipText":
-                    return "Your Zip Code";
-                case "UserCityText":
-                    return "Your City";
-                case "UserCountryText":
-                    return "Your Country";
-                case "UserDOBText":
-                    return "Your Date Of Birth (Month Day Year)";
-                case "UserEmailText":
-                    return "Your Email";
-                case "RegistrationText":
-                    return "Avatar registration";
-                case "RegistrationsDisabled":
-                    return "Registrations are currently disabled, please try again soon.";
-                case "TermsOfServiceText":
-                    return "Terms of Service";
-                case "TermsOfServiceAccept":
-                    return "Do you accept the Terms of Service as detailed above?";
+                // User registration
+                case "AvatarNameText": return "Avatar Name";
+                case "AvatarScopeText": return "Avatar Scope ID";
+                case "FirstNameText": return "Dein Vorname";
+                case "LastNameText": return "Dein Nachname";
+                case "UserAddressText": return "Deine Adresse";
+                case "UserZipText": return "Deine Postleitzahl";
+                case "UserCityText": return "Deine Stadt";
+                case "UserCountryText": return "Dein Land";
+                case "UserDOBText": return "Dein Geburtsdatum (Monat Tag Jahr)";
+                case "UserEmailText": return "Dein Email";
+                case "UserHomeRegionText": return "Heimatregion";
+                case "RegistrationText": return "Avatar Registrierung";
+                case "RegistrationsDisabled": return "Registrationen sind zur Zeit leider nicht möglich, bitte versuche es später erneut.";
+                case "TermsOfServiceText": return "Nutzungsbedingungen";
+                case "TermsOfServiceAccept": return "akzeptieren Sie die Nutzungsbedinungen, wie oben beschrieben?";
+                case "AvatarNameError": return "Sie haben keinen Avatar Namen!";
+                case "AvatarPasswordError": return "Passwort darf nicht leer sein!";
+                case "AvatarEmailError": return "Eine E-Mail Adresse ist für die Passwort Wiederherstellung erforderlich! ('none', wenn unbekannt)";
+                case "AvatarNameSpacingError": return "Ihr Avatar Name sollte 'Vorname Nachname' sein!";
 
-                    // news
+                // news
                 case "OpenNewsManager":
-                    return "Open the news manager";
+                    return "Öffne den Nachrichten Manager";
                 case "NewsManager":
-                    return "News Manager";
+                    return "Nachrichten Manager";
                 case "EditNewsItem":
-                    return "Edit news item";
+                    return "Bearbeite Nachrichten";
                 case "AddNewsItem":
-                    return "Add new news item";
+                    return "Neue Nachrichten hinzufügen";
                 case "DeleteNewsItem":
-                    return "Delete news item";
+                    return "Nachrichten löschen";
                 case "NewsDateText":
-                    return "News Date";
+                    return "Nachrichten Datum";
                 case "NewsTitleText":
-                    return "News Title";
+                    return "Nachrichten Titel Text";
                 case "NewsItemTitle":
-                    return "News Item Title";
+                    return "Nachrichten Titel";
                 case "NewsItemText":
-                    return "News Item Text";
+                    return "Nachrichten Text";
                 case "AddNewsText":
-                    return "Add News";
+                    return "Nachrichten hinzufügen";
                 case "DeleteNewsText":
-                    return "Delete News";
+                    return "Nachrichten Löschen";
                 case "EditNewsText":
-                    return "Edit News";
+                    return "Nachrichten bearbeiten";
+
+                // Users
                 case "UserProfileFor":
-                    return "User Profile For";
+                    return "Benutzerprofil für";
+                case "UsersGroupsText": return "Gruppe beigetreten";
+                case "GroupNameText": return "Gruppe";
+                case "UsersPicksText": return "Tipps für die";
                 case "ResidentSince":
-                    return "Resident Since";
+                    return "Einwohner seit";
                 case "AccountType":
-                    return "Account Type";
+                    return "Kontotyp";
                 case "PartnersName":
-                    return "Partner's Name";
+                    return "Name des Partners";
                 case "AboutMe":
-                    return "About Me";
+                    return "über mich";
                 case "IsOnlineText":
                     return "User Status";
                 case "OnlineLocationText":
@@ -143,187 +167,152 @@
                 case "RegionInformationText":
                     return "Region Information";
                 case "OwnerNameText":
-                    return "Owner Name";
+                    return "Eigentümer";
                 case "RegionLocationText":
-                    return "Region Location";
+                    return "Region Lage";
                 case "RegionSizeText":
-                    return "Region Size";
+                    return "Region Größe";
                 case "RegionNameText":
                     return "Region Name";
                 case "RegionTypeText":
-                    return "Region Type";
+                    return "Region Art";
+                case "RegionTerrainText":
+                    return "Region Terrain";
                 case "ParcelsInRegionText":
-                    return "Parcels In Region";
+                    return "Parzellen In der Region";
                 case "ParcelNameText":
-                    return "Parcel Name";
+                    return "Parzellen Name";
                 case "ParcelOwnerText":
-                    return "Parcel Owner's Name";
+                    return "Parzellen Eigentümer";
 
-                    // Region Page
+                // Region Page
                 case "RegionInfoText":
                     return "Region Info";
                 case "RegionListText":
-                    return "Region List";
+                    return "Region Liste";
                 case "RegionLocXText":
                     return "Region X";
                 case "RegionLocYText":
                     return "Region Y";
                 case "SortByLocX":
-                    return "Sort By Region X";
+                    return "nach RegionX sortieren";
                 case "SortByLocY":
-                    return "Sort By Region Y";
+                    return "nach RegionY sortieren";
                 case "SortByName":
-                    return "Sort By Region Name";
+                    return "nach Regionsnamen sortieren";
                 case "RegionMoreInfo":
-                    return "More Information";
+                    return "Mehr Informationen";
                 case "RegionMoreInfoTooltips":
-                    return "More info about";
-                case "FirstText":
-                    return "First";
-                case "BackText":
-                    return "Back";
-                case "NextText":
-                    return "Next";
-                case "LastText":
-                    return "Last";
-                case "CurrentPageText":
-                    return "Current Page";
-                case "MoreInfoText":
-                    return "More Info";
+                    return "Mehr Informationen über";
                 case "OnlineUsersText":
-                    return "Online Users";
+                    return "Online Benutzer";
                 case "RegionOnlineText":
                     return "Region Status";
+                case "RegionMaturityText":
+                    return "Access Rating";
                 case "NumberOfUsersInRegionText":
-                    return "Number of Users in region";
+                    return "Anzahl der Benutzer in Region";
 
-                    // Menu Buttons
-                case "MenuHome":
-                    return "Home";
-                case "MenuLogin":
-                    return "Login";
-                case "MenuLogout":
-                    return "Logout";
-                case "MenuRegister":
-                    return "Register";
-                case "MenuForgotPass":
-                    return "Forgot Password";
-                case "MenuNews":
-                    return "News";
-                case "MenuWorld":
-                    return "World";
-                case "MenuWorldMap":
-                    return "World Map";
-                case "MenuRegion":
-                    return "Region List";
-                case "MenuUser":
-                    return "User";
-                case "MenuOnlineUsers":
-                    return "Online Users";
-                case "MenuUserSearch":
-                    return "User Search";
-                case "MenuRegionSearch":
-                    return "Region Search";
-                case "MenuChat":
-                    return "Chat";
-                case "MenuHelp":
-                    return "Help";
-                case "MenuChangeUserInformation":
-                    return "Change User Information";
-                case "MenuWelcomeScreenManager":
-                    return "Welcome Screen Manager";
-                case "MenuNewsManager":
-                    return "News Manager";
-                case "MenuUserManager":
-                    return "User Manager";
-                case "MenuFactoryReset":
-                    return "Factory Reset";
-                case "ResetMenuInfoText":
-                    return "Resets the menu items back to the most updated defaults";
-                case "ResetSettingsInfoText":
-                    return "Resets the Web Interface settings back to the most updated defaults";
-                case "MenuPageManager":
-                    return "Page Manager";
-                case "MenuSettingsManager":
-                    return "Settings Manager";
-                case "MenuManager":
-                    return "Admin";
+                // Menu Buttons
+                case "MenuHome": return "Home";
+                case "MenuLogin": return "Login";
+                case "MenuLogout": return "Logout";
+                case "MenuRegister": return "Registrieren";
+                case "MenuForgotPass": return "Passwort vergessen";
+                case "MenuNews": return "Nachrichten";
+                case "MenuWorld": return "Welt";
+                case "MenuWorldMap": return "Weltkarte";
+                case "MenuRegion": return "Regionsliste";
+                case "MenuUser": return "Benutzer";
+                case "MenuOnlineUsers": return "Benutzer online";
+                case "MenuUserSearch": return "Benutzersuche";
+                case "MenuRegionSearch": return "Regionssuche";
+                case "MenuChat": return "Chat";
+                case "MenuHelp": return "Hilfe";
+                case "MenuChangeUserInformation": return "Ändere Benutzer Informationen";
+                case "MenuWelcomeScreenManager": return "Willkommen Screen Manager";
+                case "MenuNewsManager": return "Nachrichten Manager";
+                case "MenuUserManager": return "Benutzer Manager";
+                case "MenuFactoryReset": return "Zurücksetzen";
+                case "ResetMenuInfoText": return "Setzt das Menü auf die meist üblichen Standardwerte zurück";
+                case "ResetSettingsInfoText": return "Setzt die Webinterface Einstellungen auf die meist üblichen Standardwerte zurück";
+                case "MenuPageManager": return "Seitenmanager";
+                case "MenuSettingsManager": return "Einstellungsmanager";
+                case "MenuManager": return "Management";
+                case "MenuSettings": return "Einstellungen";
+                case "MenuRegionManager": return "Region-Manager";
+                case "MenuManagerSimConsole": return "Simulator-Konsole";
+                case "MenuPurchases": return "Benutzer Einkäufe";
+                case "MenuMyPurchases": return "Meine Käufe";
+                case "MenuTransactions": return "Benutzertransaktionen";
+                case "MenuMyTransactions": return "Meine Vorgänge";
+                case "MenuMyClassifieds": return "Meine Classifieds <NT>";                
+                case "MenuStatistics": return "Viewer-Statistiken";
+                case "MenuGridSettings": return "Grid-Einstellungen";
 
-                    // Tooltips Menu Buttons
-                case "TooltipsMenuHome":
-                    return "Home";
-                case "TooltipsMenuLogin":
-                    return "Login";
-                case "TooltipsMenuLogout":
-                    return "Logout";
-                case "TooltipsMenuRegister":
-                    return "Register";
-                case "TooltipsMenuForgotPass":
-                    return "Forgot Password";
-                case "TooltipsMenuNews":
-                    return "News";
-                case "TooltipsMenuWorld":
-                    return "World";
-                case "TooltipsMenuWorldMap":
-                    return "World Map";
-                case "TooltipsMenuRegion":
-                    return "Region List";
-                case "TooltipsMenuUser":
-                    return "User";
-                case "TooltipsMenuOnlineUsers":
-                    return "Online Users";
-                case "TooltipsMenuUserSearch":
-                    return "User Search";
-                case "TooltipsMenuRegionSearch":
-                    return "Region Search";
-                case "TooltipsMenuChat":
-                    return "Chat";
-                case "TooltipsMenuHelp":
-                    return "Help";
-                case "TooltipsMenuChangeUserInformation":
-                    return "Change User Information";
-                case "TooltipsMenuWelcomeScreenManager":
-                    return "Welcome Screen Manager";
-                case "TooltipsMenuNewsManager":
-                    return "News Manager";
-                case "TooltipsMenuUserManager":
-                    return "User Manager";
-                case "TooltipsMenuFactoryReset":
-                    return "Factory Reset";
-                case "TooltipsMenuPageManager":
-                    return "Page Manager";
-                case "TooltipsMenuSettingsManager":
-                    return "Settings Manager";
-                case "TooltipsMenuManager":
-                    return "Admin Management";
+                // Tooltips Menu Buttons
+                case "TooltipsMenuHome": return "Home";
+                case "TooltipsMenuLogin": return "Login";
+                case "TooltipsMenuLogout": return "Logout";
+                case "TooltipsMenuRegister": return "Register";
+                case "TooltipsMenuForgotPass": return "Passwort vergessen";
+                case "TooltipsMenuNews": return "Nachrichten";
+                case "TooltipsMenuWorld": return "Welt";
+                case "TooltipsMenuWorldMap": return "Weltkarte";
+                case "TooltipsMenuUser": return "Benutzer";
+                case "TooltipsMenuOnlineUsers": return "Benutzer Online";
+                case "TooltipsMenuUserSearch": return "Benutzersuche";
+                case "TooltipsMenuRegionSearch": return "Regionssuche";
+                case "TooltipsMenuChat": return "Chat";
+                case "TooltipsMenuHelp": return "Hilfe";
+                case "TooltipsMenuChangeUserInformation": return "Benutzerinformationen ändern";
+                case "TooltipsMenuWelcomeScreenManager": return "Willkommen Screen Manager";
+                case "TooltipsMenuNewsManager": return "Nachrichten Manager";
+                case "TooltipsMenuUserManager": return "Benutzermanager";
+                case "TooltipsMenuFactoryReset": return "Zurücksetzen";
+                case "TooltipsMenuPageManager": return "Seitenmanager";
+                case "TooltipsMenuSettingsManager": return "Einstellungsmanager";
+                case "TooltipsMenuManager": return "Admin Management";
+                case "TooltipsMenuSettings": return "WebUI Einstellungen";
+                case "TooltipsMenuRegionManager": return "Region erstellen / bearbeiten";
+                case "TooltipsMenuManagerSimConsole": return "Online-Simulator-Konsole";
+                case "TooltipsMenuPurchases": return "Kaufinformationen";
+                case "TooltipsMenuTransactions": return "Transaktionsinformationen";
+                case "TooltipsMenuStatistics": return "Viewer-Statistiken";
+                case "TooltipsMenuGridSettings": return "Grid-Einstellungen";
 
-                    // Menu Region
-                case "MenuRegionTitle":
-                    return "Region";
-                case "MenuParcelTitle":
-                    return "Parcel";
-                case "MenuOwnerTitle":
-                    return "Owner";
+                // Menu Region
+                case "MenuRegionTitle": return "Regionen";
+                case "MenuParcelTitle": return "Parzelle";
+                case "MenuOwnerTitle": return "Owner";
+                case "TooltipsMenuRegion": return "Regions Liste";
+                case "TooltipsMenuParcel": return "Region Pakete";
+                case "TooltipsMenuOwner": return "Immobilienbesitzer";
 
-                    // Menu Profile
-                case "MenuProfileTitle":
-                    return "Profil";
-                case "MenuGroupTitle":
-                    return "Group";
-                case "MenuPicksTitle":
-                    return "Picks";
+                // Menu Profile
+                case "MenuProfileTitle": return "Profil";
+                case "MenuGroupTitle": return "Gruppe";
+                case "MenuPicksTitle": return "Auswahl";
+                case "MenuRegionsTitle": return "Regionen";
+                case "TooltipsMenuProfile": return "Benutzerprofil";
+                case "TooltipsMenuGroups": return "Benutzergruppen";
+                case "TooltipsMenuPicks": return "Benutzer Picks";
+                case "TooltipsMenuRegions": return "Benutzer Regionen";
+                case "UserGroupNameText": return "Benutzergruppe";
+                case "PickNameText": return "Wählen Sie Namen";
+                case "PickRegionText": return "Lage";
 
-                    // Urls
+                // Urls
                 case "WelcomeScreen":
-                    return "Welcome Screen";
+                    return "Willkommen Screen";
 
-                    // Tooltips Urls
+                // Tooltips Urls
                 case "TooltipsWelcomeScreen":
-                    return "Welcome Screen";
+                    return "Willkommen Screen";
                 case "TooltipsWorldMap":
-                    return "World Map";
+                    return "Weltkarte";
 
-                    // Style Switcher
+                // Style Switcher
                 case "styles1":
                     return "Default Minimalist";
                 case "styles2":
@@ -336,234 +325,250 @@
 
                     return "Luminus";
                 case "StyleSwitcherStylesText":
-                    return "Styles";
+                    return "Arten";
                 case "StyleSwitcherLanguagesText":
-                    return "Languages";
+                    return "Sprachen";
                 case "StyleSwitcherChoiceText":
-                    return "Choice";
+                    return "Auswahl";
 
-                    // Language Switcher Tooltips
+                // Language Switcher Tooltips
                 case "en":
                     return "English";
                 case "fr":
-                    return "French";
+                    return "Français";
                 case "de":
-                    return "German";
+                    return "Deutsch";
                 case "it":
-                    return "Italian";
+                    return "Italiano";
                 case "es":
-                    return "Spanish";
+                    return "Español";
+                case "nl":
+                    return "Nederlands";
+            case "ru":
+                return "Русский";
 
-                    // Index Page
+                // Index Page
                 case "HomeText":
                     return "Home";
                 case "HomeTextWelcome":
-                    return "This is our New Virtual World! Join us now, and make a difference!";
+                    return "Hier ist unsere neue virtuelle Welt! besuche uns jetzt und erkenne den Unterschied!";
                 case "HomeTextTips":
-                    return "New presentations";
+                    return "Neue Präsentationen";
                 case "WelcomeToText":
-                    return "Welcome to";
+                    return "Willkommen bei";
 
-                    // World Map Page
+                // World Map Page
                 case "WorldMap":
-                    return "World Map";
+                    return "Weltkarte";
                 case "WorldMapText":
-                    return "Full Screen";
+                    return "Vollbild";
 
-                    // Chat Page
+                // Chat Page
                 case "ChatText":
-                    return "Chat Support";
+                    return "Chat";
 
-                    // Help Page
+                // Help Page
                 case "HelpText":
-                    return "Help";
+                    return "Hilfe";
                 case "HelpViewersConfigText":
-                    return "Help Viewers Configuration";
-                case "AngstormViewer":
-                    return "Angstorm Viewer";
-                case "VoodooViewer":
-                    return "Voodoo Viewer";
+                    return "Viewer Konfiguration";
+                case "AngstromViewer":
+                    return "Angstrom Viewer";
                 case "AstraViewer":
                     return "Astra Viewer";
+                case "FirestormViewer":
+                    return "Firestorm Viewer";
+                case "KokuaViewer":
+                    return "Kokua Viewer";
                 case "ImprudenceViewer":
                     return "Imprudence Viewer";
                 case "PhoenixViewer":
                     return "Phoenix Viewer";
                 case "SingularityViewer":
                     return "Singularity Viewer";
+                case "VoodooViewer":
+                    return "Voodoo Viewer";
                 case "ZenViewer":
                     return "Zen Viewer";
 
-                    //Logout page
+                //Logout page
                 case "LoggedOutSuccessfullyText":
-                    return "You have been logged out successfully.";
+                    return "Du hast dich erfolgreich abgemeldet.";
                 case "Logout":
                     return "Logout";
 
-                    //Change user information page
+                //Change user information page
                 case "ChangeUserInformationText":
-                    return "Change User Information";
+                    return "Ändere Benutzer Informationen";
                 case "ChangePasswordText":
-                    return "Change Password";
+                    return "Passwort ändern";
                 case "NewPasswordText":
-                    return "New Password";
+                    return "Neues Passwort";
                 case "NewPasswordConfirmationText":
-                    return "New Password (Confirmation)";
+                    return "Neues Passwort bestätigen";
                 case "ChangeEmailText":
-                    return "Change Email Address";
+                    return "Ändere Email Adresse";
                 case "NewEmailText":
-                    return "New Email Address";
+                    return "Neue Email Adresse";
                 case "DeleteUserText":
-                    return "Delete My Account";
+                    return "Meinen Account löschen";
                 case "DeleteText":
-                    return "Delete";
+                    return "löschen";
                 case "DeleteUserInfoText":
                     return
-                        "This will remove all information about you in the grid and remove your access to this service. If you wish to continue, enter your name and password and click Delete.";
+                        "Das wird alle Informationen im Grid über dich und deinen Zugang zu diesem Dienst entfernen. Um dies abzuschließen gebe hier deinen Benutzernamen und Passwort ein und drücke auf löschen.";
                 case "EditText":
-                    return "Edit";
+                    return "bearbeiten";
                 case "EditUserAccountText":
-                    return "Edit User Account";
+                    return "bearbeite Benutzer Account";
 
-                    //Maintenance page
+                //Maintenance page
                 case "WebsiteDownInfoText":
-                    return "Website is currently down, please try again soon.";
+                    return "Die Website ist zur Zeit nicht erreichbar, bitte versuche es später noch einmal.";
                 case "WebsiteDownText":
                     return "Website offline";
 
-                    //http_404 page
+                //http_404 page
                 case "Error404Text":
                     return "Error code";
                 case "Error404InfoText":
-                    return "404 Page Not Found";
+                    return "404 Seite nicht gefunden";
                 case "HomePage404Text":
-                    return "home page";
+                    return "home seite";
 
-                    //http_505 page
+                //http_505 page
                 case "Error505Text":
                     return "Error code";
                 case "Error505InfoText":
-                    return "505 Internal Server Error";
+                    return "505 interner Server Fehler";
                 case "HomePage505Text":
-                    return "home page";
+                    return "home seite";
 
-                    //user_search page
+                //user_search page
                 case "Search":
-                    return "Search";
+                    return "Suche";
                 case "SearchText":
-                    return "Search";
+                    return "Suche";
                 case "SearchForUserText":
-                    return "Search For A User";
+                    return "Suche nach einen Benutzer";
                 case "UserSearchText":
-                    return "User Search";
+                    return "Benutzersuche";
                 case "SearchResultForUserText":
-                    return "Search Result For User";
+                    return "Suchergebnis für Benutzer";
 
-                    //region_search page
+                //region_search page
                 case "SearchForRegionText":
-                    return "Search For A Region";
+                    return "Suche nach einer Region";
                 case "RegionSearchText":
-                    return "Region Search";
+                    return "Region Suche";
                 case "SearchResultForRegionText":
-                    return "Search Result For Region";
+                    return "Suchergebnis für Region";
 
-                    //Edit user page
+                //Edit user page
                 case "AdminDeleteUserText":
-                    return "Delete User";
+                    return "Benutzer löschen";
                 case "AdminDeleteUserInfoText":
-                    return "This deletes the account and destroys all information associated with it.";
+                    return "Dies löscht den Account und zerstört alle damit verbundenen Daten.";
                 case "BanText":
-                    return "Ban";
+                    return "Sperren";
                 case "UnbanText":
-                    return "Unban";
+                    return "entsperren";
                 case "AdminTempBanUserText":
-                    return "Temp Ban User";
+                    return "vorübergehender Benutzer Ban";
                 case "AdminTempBanUserInfoText":
-                    return "This blocks the user from logging in for the set amount of time.";
+                    return "Dies verhindert, daß sich der Benutzer für eine bestimmte Zeit anmelden kann.";
                 case "AdminBanUserText":
-                    return "Ban User";
+                    return "Benutzer sperren";
                 case "AdminBanUserInfoText":
-                    return "This blocks the user from logging in until the user is unbanned.";
+                    return "Dies verhindert, daß sich der Benutzer bis er entsperrt wurde nicht anmelden kann.";
                 case "AdminUnbanUserText":
-                    return "Unban User";
+                    return "Benutzer entsperren";
                 case "AdminUnbanUserInfoText":
-                    return "Removes temporary and permanent bans on the user.";
+                    return "entferne temporäre und ständige sperren des Benutzers.";
                 case "AdminLoginInAsUserText":
-                    return "Login as User";
+                    return "als Benutzer anmelden";
                 case "AdminLoginInAsUserInfoText":
                     return
-                        "You will be logged out of your admin account, and logged in as this user, and will see everything as they see it.";
+                         "Dein Admin Account wird nun abgemeldet, dieser Benutzer wird angemeldet und du wirst sehen was sie sehen.";
                 case "TimeUntilUnbannedText":
-                    return "Time until user is unbanned";
+                    return "Zeit bis benutzer entsperrt wird";
                 case "DaysText":
-                    return "Days";
+                    return "Tage";
                 case "HoursText":
-                    return "Hours";
+                    return "Stunden";
                 case "MinutesText":
-                    return "Minutes";
+                    return "Minuten";
                 case "EdittingText":
-                    return "Editting";
+                    return "Bearbeiten";
                 case "BannedUntilText":
-                    return "User banned until:";
+                    return "Benutzer gesperrt bis:";
                 case "KickAUserText":
-                    return "Kick A User (Logs them out within 30 seconds)";
+                    return "Kick einen Benutzer (wird innerhalb von 30 Sekunden abgemeldet)";
                 case "KickMessageText":
-                    return "Message To User";
+                    return "Message an Benutzer";
                 case "KickUserText":
-                    return "Kick User";
+                    return "Kick Benutzer";
 
-                    //factory_reset
+                //factory_reset
                 case "FactoryReset":
-                    return "Factory Reset";
+                    return "Zurücksetzen";
                 case "ResetMenuText":
-                    return "Reset Menu To Factory Defaults";
+                    return "Menü zum Zurücksetzen auf Werkseinstellungen";
                 case "ResetSettingsText":
-                    return "Reset Web Settings (Settings Manager page) To Factory Defaults";
+                    return "Zurücksetzen der Webeinstellungen (Einstellungsmanager Seite) zu den Werkseinstellungen";
                 case "Reset":
                     return "Reset";
                 case "Settings":
-                    return "Settings";
+                    return "Einstellungen";
                 case "Pages":
-                    return "Pages";
+                    return "Seiten";
                 case "DefaultsUpdated":
                     return
-                        "defaults updated, go to Factory Reset to update or Settings Manager to disable this warning.";
+                        "Standardwerte aktualisiert, gehe zu den Werkseinstellungen um sie zu aktualisieren oder Einstellungsmanager um diese Warnung zu deaktivieren.";
 
-                    //page_manager
+                //page_manager
                 case "PageManager":
-                    return "Page Manager";
+                    return "Seitenmanager";
                 case "SaveMenuItemChanges":
-                    return "Save Menu Item";
+                    return "Speichere Menüpunkt";
                 case "SelectItem":
-                    return "Select Item";
+                    return "Punkt Auswählen";
                 case "DeleteItem":
-                    return "Delete Item";
+                    return "Punkt löschen";
                 case "AddItem":
-                    return "Add Item";
+                    return "Punkt hinzufügen";
                 case "PageLocationText":
-                    return "Page Location";
+                    return "Seitenlage";
                 case "PageIDText":
-                    return "Page ID";
+                    return "Seiten ID";
                 case "PagePositionText":
-                    return "Page Position";
+                    return "Seitenposition";
                 case "PageTooltipText":
-                    return "Page Tooltip";
+                    return "Seiten Tooltip";
                 case "PageTitleText":
-                    return "Page Title";
-                case "No":
-                    return "No";
-                case "Yes":
-                    return "Yes";
+                    return "Seitentitel";
                 case "RequiresLoginText":
-                    return "Requires Login To View";
+                    return "Benötigt Anmeldung für Anzeige";
                 case "RequiresLogoutText":
-                    return "Requires Logout To View";
+                    return "Benötigt Abmeldung für Anzeige";
                 case "RequiresAdminText":
-                    return "Requires Admin To View";
+                    return "Benötigt Adminrechte für Anzeige";
 
-                    //settings manager page
-                case "Save":
-                    return "Save";
+                // grid settings
+                case "GridSettingsManager": return "Grid Settings Manager";
+                case "GridnameText": return "Grid Namen ";
+                case "GridnickText": return "Grid Spitznamen ";
+                case "WelcomeMessageText": return "Login Willkommen Nachrichten ";
+            case "GovernorNameText": return "System Gouverneur";
+            case "MainlandEstateNameText": return "Festland Immobilien";
+            case "RealEstateOwnerNameText": return "System Gutsbesitzer Namen";
+            case "SystemEstateNameText": return "System Immobilienname";
+            case "BankerNameText": return "System banker";
+            case "MarketPlaceOwnerNameText": return "System Marktplatz Besitzer";
+
+            //settings manager page
+            case "WebRegistrationText":
+                    return "Web-Registrierungen erlaubt";
                 case "GridCenterXText":
                     return "Grid Center Location X";
                 case "GridCenterYText":
@@ -571,54 +576,98 @@
                 case "GoogleMapAPIKeyText":
                     return "Google Maps API Key";
                 case "GoogleMapAPIKeyHelpText":
-                    return "The google maps v2 api key generated here";
+                    return "The google maps v2 api key erstellt";
                 case "SettingsManager":
-                    return "Settings Manager";
+                    return "Settingsmanager";
                 case "IgnorePagesUpdatesText":
-                    return "Ignore pages update warning until next update";
+                    return "Ignoriere Seitenupdate Warnung bis zum nächsten Update";
                 case "IgnoreSettingsUpdatesText":
-                    return "Ignore settings update warning until next update";
+                    return "Ignoriere Einstellungsupdate Warnung bis zum nächsten Update";
 
-                    //Times
+                // Transactions
+                case "TransactionsText": return "Transaktionen";
+                case "DateInfoText": return "Wählen Sie einen Datumsbereich";
+                case "DateStartText": return "Beginn Datum";
+                case "DateEndText": return "Ende";
+                case "30daysPastText": return "Letzten 30 Tagen";
+                case "TransactionDateText": return "Date";
+                case "TransactionDetailText": return "Description";
+                case "TransactionAmountText": return "Amount";
+                case "TransactionBalanceText": return "Balance";
+                case "NoTransactionsText": return "Keine Transaktionen gefunden...";
+                case "PurchasesText": return "Einkäufe";
+                case "LoggedIPText": return "Gespeichert IP-Adresse";
+                case "NoPurchasesText": return "Keine Einkäufe gefunden...";
+                case "PurchaseCostText": return "Kosten";
+                
+                // Classifieds
+                case "ClassifiedsText": return "Rubriksanzeige";
+                
+                // Sim Console
+                case "SimConsoleText": return "Sim Command Console";
+                case "SimCommandText": return "Command";
+
+                // statistics
+                case "StatisticsText": return "Viewer-Statistiken";
+                case "ViewersText": return "Viewer-Nutzung";
+                case "GPUText": return "Grafikkarten";
+                case "PerformanceText": return "Leistungsmittelwerte";
+                case "FPSText": return "Bilder / s";
+                case "RunTimeText": return "Laufzeit";
+                case "RegionsVisitedText": return "Regionen besucht";
+                case "MemoryUseageText": return "Speichernutzung";
+                case "PingTimeText": return "Ping-Zeit";
+                case "AgentsInViewText": return "Agents im Blick";
+                case "ClearStatsText": return "Klare Statistiken über";
+
+                // abuse reports
+            case "MenuAbuse": return "Missbrauch Berichte";
+            case "TooltipsMenuAbuse": return "Benutzer abuser berichte";
+            case "AbuseReportText": return "Missbrauch";
+            case "AbuserNameText": return "Abuser";
+            case "AbuseReporterNameText": return "Reporter";
+            case "AssignedToText": return "Zugewiesen";
+
+                //Times
                 case "Sun":
-                    return "Sun";
+                    return "Son";
                 case "Mon":
                     return "Mon";
                 case "Tue":
-                    return "Tue";
+                    return "Die";
                 case "Wed":
-                    return "Wed";
+                    return "Mi";
                 case "Thu":
-                    return "Thu";
+                    return "Do";
                 case "Fri":
-                    return "Fri";
+                    return "Fr";
                 case "Sat":
-                    return "Sat";
+                    return "Sa";
                 case "Sunday":
-                    return "Sunday";
+                    return "Sonntag";
                 case "Monday":
-                    return "Monday";
+                    return "Montag";
                 case "Tuesday":
-                    return "Tuesday";
+                    return "Dienstag";
                 case "Wednesday":
-                    return "Wednesday";
+                    return "Mittwoch";
                 case "Thursday":
-                    return "Thursday";
+                    return "Donnerstag";
                 case "Friday":
-                    return "Friday";
+                    return "Freitag";
                 case "Saturday":
-                    return "Saturday";
+                    return "Samstag";
 
                 case "Jan_Short":
                     return "Jan";
                 case "Feb_Short":
                     return "Feb";
                 case "Mar_Short":
-                    return "Mar";
+                    return "Mär";
                 case "Apr_Short":
                     return "Apr";
                 case "May_Short":
-                    return "May";
+                    return "Mai";
                 case "Jun_Short":
                     return "Jun";
                 case "Jul_Short":
@@ -628,52 +677,91 @@
                 case "Sep_Short":
                     return "Sep";
                 case "Oct_Short":
-                    return "Oct";
+                    return "Okt";
                 case "Nov_Short":
                     return "Nov";
                 case "Dec_Short":
-                    return "Dec";
+                    return "Dez";
 
                 case "January":
-                    return "January";
+                    return "Januar";
                 case "February":
-                    return "February";
+                    return "Februar";
                 case "March":
-                    return "March";
+                    return "März";
                 case "April":
                     return "April";
                 case "May":
-                    return "May";
+                    return "Mai";
                 case "June":
-                    return "June";
+                    return "Juni";
                 case "July":
-                    return "July";
+                    return "Juli";
                 case "August":
                     return "August";
                 case "September":
                     return "September";
                 case "October":
-                    return "October";
+                    return "Oktober";
                 case "November":
                     return "November";
                 case "December":
-                    return "December";
+                    return "Dezember";
 
-                    // ColorBox
+                // User types
+                case "UserTypeText":
+                    return "Benutzertyp";
+                case "AdminUserTypeInfoText":
+                    return "Der Typ des Benutzers (Derzeit für die regelmäßige Stipendium Zahlungen verwendet wird).";
+                case "Guest":
+                    return "Gast";
+                case "Resident":
+                    return "Einwohner";
+                case "Member":
+                    return "Mitglied";
+                case "Contractor":
+                    return "Auftragnehmer";
+                case "Charter_Member":
+                    return "Charter-Mitglied";
+
+                // ColorBox
                 case "ColorBoxImageText":
                     return "Image";
                 case "ColorBoxOfText":
-                    return "of";
+                    return "von";
                 case "ColorBoxPreviousText":
-                    return "Previous";
+                    return "vorig";
                 case "ColorBoxNextText":
-                    return "Next";
+                    return "nächste";
                 case "ColorBoxCloseText":
-                    return "Close";
+                    return "schließen";
                 case "ColorBoxStartSlideshowText":
-                    return "Start Slide Show";
+                    return "Starte Slide Show";
                 case "ColorBoxStopSlideshowText":
-                    return "Stop Slide Show";
+                    return "Stope Slide Show";
+
+                // Maintenance
+                case "NoAccountFound":
+                    return "Kein Konto gefunden";
+                case "DisplayInMenu":
+                    return "Anzeige im Menü";
+                case "ParentText":
+                    return "Menü Mutter";
+                case "CannotSetParentToChild":
+                    return "Kann nicht Menüpunkt als Kind selbst festgelegt.";
+                case "TopLevel":
+                    return "Erste Ebene";
+                case "HideLanguageBarText":
+                    return "Sprachauswahlleiste ausblenden";
+                case "HideStyleBarText":
+                    return "Stil Auswahlleiste ausblenden";
+                case "HideSlideshowBarText":
+                    return "Ausblenden Diashow bar";
+                case "LocalFrontPageText":
+                    return "Lokale Titelseite";
+                case "LocalCSSText":
+                    return "Lokale CSS-Stylesheet";
+
             }
             return "UNKNOWN CHARACTER";
         }

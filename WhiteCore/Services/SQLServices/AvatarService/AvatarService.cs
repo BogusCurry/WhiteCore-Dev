@@ -25,17 +25,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
+using Nini.Config;
+using OpenMetaverse;
 using WhiteCore.Framework.ClientInterfaces;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.SceneInfo;
 using WhiteCore.Framework.Services;
-using WhiteCore.Framework.Services.ClassHelpers.Assets;
 using WhiteCore.Framework.Services.ClassHelpers.Inventory;
 using WhiteCore.Framework.Utilities;
-using Nini.Config;
-using OpenMetaverse;
 
 namespace WhiteCore.Services.SQLServices.AvatarService
 {
@@ -74,9 +73,12 @@ namespace WhiteCore.Services.SQLServices.AvatarService
             registry.RegisterModuleInterface<IAvatarService>(this);
 
             if (MainConsole.Instance != null)
-                MainConsole.Instance.Commands.AddCommand("reset avatar appearance", "reset avatar appearance [Name]",
-                                                         "Resets the given avatar's appearance to the default",
-                                                         ResetAvatarAppearance, false, true);
+                MainConsole.Instance.Commands.AddCommand(
+                    "reset avatar appearance", 
+                    "reset avatar appearance [Name]",
+                    "Resets the given avatar's appearance to the default",
+                    ResetAvatarAppearance, false, true);
+
             Init(registry, Name, serverPath: "/avatar/", serverHandlerName: "AvatarServerURI");
         }
 
@@ -106,9 +108,10 @@ namespace WhiteCore.Services.SQLServices.AvatarService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public AvatarAppearance GetAppearance(UUID principalID)
         {
-            object remoteValue = DoRemoteByURL("AvatarServerURI", principalID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (AvatarAppearance) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemoteByURL ("AvatarServerURI", principalID);
+                return remoteValue != null ? (AvatarAppearance)remoteValue : null;
+            }
 
             return m_Database.Get(principalID);
         }
@@ -130,7 +133,7 @@ namespace WhiteCore.Services.SQLServices.AvatarService
                         loadedArchive = true;
                     }
                 }
-                if(avappearance == null)//Set as ruth
+                if(avappearance == null)//Set as Ruth
                 {
                     avappearance = new AvatarAppearance(principalID);
                     SetAppearance(principalID, avappearance);
@@ -148,13 +151,10 @@ namespace WhiteCore.Services.SQLServices.AvatarService
                 return;
             }
 
-            m_registry.RequestModuleInterface<ISimulationBase>().EventManager.FireGenericEventHandler("SetAppearance",
-                                                                                                      new object[2]
-                                                                                                          {
-                                                                                                              principalID,
-                                                                                                              appearance
-                                                                                                          });
-            m_Database.Store(principalID, appearance);
+            m_Database.Store (principalID, appearance);
+
+            var simBase = m_registry.RequestModuleInterface<ISimulationBase> ();
+            simBase.EventManager.FireGenericEventHandler("SetAppearance", new object[] { principalID, appearance });
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
@@ -169,9 +169,9 @@ namespace WhiteCore.Services.SQLServices.AvatarService
             m_Database.Delete(principalID);
         }
 
-        private object DeleteUserInformation(string name, object param)
+        object DeleteUserInformation(string name, object param)
         {
-            UUID user = (UUID) param;
+            var user = (UUID) param;
             ResetAvatar(user);
             return null;
         }
@@ -182,8 +182,10 @@ namespace WhiteCore.Services.SQLServices.AvatarService
 
         public void ResetAvatarAppearance(IScene scene, string[] cmd)
         {
-            string name = "";
-            name = cmd.Length == 3 ? MainConsole.Instance.Prompt("Avatar Name") : Util.CombineParams(cmd, 3);
+            string name;
+            name = cmd.Length == 3 
+                ? MainConsole.Instance.Prompt("Avatar Name") 
+                : Util.CombineParams(cmd, 3);
             UserAccount acc = m_registry.RequestModuleInterface<IUserAccountService>().GetUserAccount(null, name);
             if (acc == null)
             {
@@ -191,8 +193,7 @@ namespace WhiteCore.Services.SQLServices.AvatarService
                 return;
             }
             ResetAvatar(acc.PrincipalID);
-            InventoryFolderBase folder = m_invService.GetFolderForType(acc.PrincipalID, (InventoryType) 0,
-                                                                       AssetType.CurrentOutfitFolder);
+            InventoryFolderBase folder = m_invService.GetFolderForType(acc.PrincipalID, 0, FolderType.CurrentOutfit);
             if (folder != null)
                 m_invService.ForcePurgeFolder(folder);
 

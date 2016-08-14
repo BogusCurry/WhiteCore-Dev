@@ -28,12 +28,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.SceneInfo.Entities;
 using WhiteCore.Framework.Utilities;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
 
 namespace WhiteCore.Framework.ClientInterfaces
 {
@@ -43,22 +43,64 @@ namespace WhiteCore.Framework.ClientInterfaces
     public sealed class AvatarAppearance : IDataTransferable
     {
         public static readonly int VISUALPARAM_COUNT = 218;
-
         public static readonly int TEXTURE_COUNT = 21;
         public static readonly byte[] BAKE_INDICES = new byte[] {8, 9, 10, 11, 19, 20};
-        private Dictionary<int, List<AvatarAttachment>> m_attachments;
-        private float m_avatarHeight;
+        
+        int m_serial = 1;
+        byte[] m_visualparams;
+        Primitive.TextureEntry m_texture;
+        AvatarWearable[] m_wearables;
+        Dictionary<int, List<AvatarAttachment>> m_attachments;        
+        float m_avatarHeight = 0;
+        UUID m_owner;
+        Dictionary<string, UUID> m_wearableCache = new Dictionary<string, UUID>();
 
-        private UUID m_owner;
-        private int m_serial = 1;
-        private Primitive.TextureEntry m_texture;
-        private byte[] m_visualparams;
-        private AvatarWearable[] m_wearables;
-        private Dictionary<string, UUID> m_wearableCache = new Dictionary<string, UUID>();
+        public int Serial
+        {
+            get { return m_serial; }
+            set { m_serial = value; }
+        }
+
+        public byte[] VisualParams
+        {
+            get { return m_visualparams; }
+            set { m_visualparams = value; }
+        }
+
+        public Primitive.TextureEntry Texture
+        {
+            get { return m_texture; }
+            set { m_texture = value; }
+        }
+
+        public AvatarWearable[] Wearables
+        {
+            get { return m_wearables; }
+            set { m_wearables = value; }
+        }
+
+        public float AvatarHeight
+        {
+            get { return m_avatarHeight; }
+            set { m_avatarHeight = value; }
+        }
 
         public Dictionary<string, UUID> WearableCache
         {
             get { return m_wearableCache; }
+        }
+
+        public UUID Owner
+        {
+            get { return m_owner; }
+            set { m_owner = value; }
+        }
+
+        static readonly object _attachmentslock = new object ();
+        public Dictionary<int, List<AvatarAttachment>> Attachments
+        {
+            get { lock (_attachmentslock) { return m_attachments; }}
+            set { lock (_attachmentslock) { m_attachments = value; }}
         }
 
         public AvatarAppearance() : this(UUID.Zero)
@@ -67,8 +109,6 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         public AvatarAppearance(UUID owner)
         {
-            // MainConsole.Instance.WarnFormat("[AVATAR APPEARANCE]: create empty appearance for {0}",owner);
-
             m_serial = 1;
             m_owner = owner;
 
@@ -76,14 +116,11 @@ namespace WhiteCore.Framework.ClientInterfaces
             SetDefaultTexture();
             SetDefaultParams();
             SetHeight();
-
             m_attachments = new Dictionary<int, List<AvatarAttachment>>();
         }
 
         public AvatarAppearance(UUID avatarID, OSDMap map)
         {
-            //            MainConsole.Instance.WarnFormat("[AVATAR APPEARANCE]: create appearance for {0} from OSDMap",avatarID);
-
             m_owner = avatarID;
             Unpack(map);
         }
@@ -161,55 +198,16 @@ namespace WhiteCore.Framework.ClientInterfaces
 
             m_visualparams = null;
             if (appearance.VisualParams != null)
-                m_visualparams = (byte[]) appearance.VisualParams.Clone();
+                m_visualparams = (byte [])appearance.VisualParams.Clone ();
+            else
+                SetDefaultParams ();    // we need something to work with
+            
+            SetHeight ();
 
             // Copy the attachment, force append mode since that ensures consistency
             m_attachments = new Dictionary<int, List<AvatarAttachment>>();
             foreach (AvatarAttachment attachment in appearance.GetAttachments())
                 AppendAttachment(new AvatarAttachment(attachment));
-            SetHeight();
-        }
-
-        public UUID Owner
-        {
-            get { return m_owner; }
-            set { m_owner = value; }
-        }
-
-        public int Serial
-        {
-            get { return m_serial; }
-            set { m_serial = value; }
-        }
-
-        public byte[] VisualParams
-        {
-            get { return m_visualparams; }
-            set { m_visualparams = value; }
-        }
-
-        public Primitive.TextureEntry Texture
-        {
-            get { return m_texture; }
-            set { m_texture = value; }
-        }
-
-        public AvatarWearable[] Wearables
-        {
-            get { return m_wearables; }
-            set { m_wearables = value; }
-        }
-
-        public float AvatarHeight
-        {
-            get { return m_avatarHeight; }
-            set { m_avatarHeight = value; }
-        }
-
-        public Dictionary<int, List<AvatarAttachment>> Attachments
-        {
-            get { return m_attachments; }
-            set { m_attachments = value; }
         }
 
         public void GetAssetsFrom(AvatarAppearance app)
@@ -237,38 +235,52 @@ namespace WhiteCore.Framework.ClientInterfaces
         {
             m_wearables = AvatarWearable.DefaultWearables;
         }
-
-        private void SetDefaultParams()
+        
+        public void ResetAppearance()
         {
-            m_visualparams = new byte[]
-                                 {
-                                     33, 61, 85, 23, 58, 127, 63, 85, 63, 42, 0, 85, 63, 36, 85, 95, 153, 63, 34, 0, 63,
-                                     109, 88, 132, 63, 136, 81, 85, 103, 136, 127, 0, 150, 150, 150, 127, 0, 0, 0, 0, 0,
-                                     127, 0, 0, 255, 127, 114, 127, 99, 63, 127, 140, 127, 127, 0, 0, 0, 191, 0, 104, 0,
-                                     0,
-                                     0, 0, 0, 0, 0, 0, 0, 145, 216, 133, 0, 127, 0, 127, 170, 0, 0, 127, 127, 109, 85,
-                                     127,
-                                     127, 63, 85, 42, 150, 150, 150, 150, 150, 150, 150, 25, 150, 150, 150, 0, 127, 0, 0
-                                     ,
-                                     144, 85, 127, 132, 127, 85, 0, 127, 127, 127, 127, 127, 127, 59, 127, 85, 127, 127,
-                                     106, 47, 79, 127, 127, 204, 2, 141, 66, 0, 0, 127, 127, 0, 0, 0, 0, 127, 0, 159, 0,
-                                     0,
-                                     178, 127, 36, 85, 131, 127, 127, 127, 153, 95, 0, 140, 75, 27, 127, 127, 0, 150,
-                                     150,
-                                     198, 0, 0, 63, 30, 127, 165, 209, 198, 127, 127, 153, 204, 51, 51, 255, 255, 255,
-                                     204,
-                                     0, 255, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 0, 150, 150, 150, 150,
-                                     150,
-                                     0, 127, 127, 150, 150, 150, 150, 150, 150, 150, 150, 0, 0, 150, 51, 132, 150, 150,
-                                     150
-                                 };
-            //            for (int i = 0; i < VISUALPARAM_COUNT; i++)
-            //            {
-            //                m_visualparams[i] = 150;
-            //            }
+        	m_serial = 1;
+            SetDefaultTexture();
         }
 
-        private void SetDefaultTexture()
+        void SetDefaultParams()
+        {
+            // Initial parameters for Ruth
+            // Superseded by the new Avatar details
+        	/*
+            m_visualparams = new byte[] {
+        		33, 61, 85, 23, 58, 127, 63, 85, 63, 42, 0, 85, 63, 36, 85, 95, 153, 63, 34, 0, 63,
+        		109, 88, 132, 63, 136, 81, 85, 103, 136, 127, 0, 150, 150, 150, 127, 0, 0, 0, 0, 0,
+        		127, 0, 0, 255, 127, 114, 127, 99, 63, 127, 140, 127, 127, 0, 0, 0, 191, 0, 104, 0,
+        		0, 0, 0, 0, 0, 0, 0, 0, 145, 216, 133, 0, 127, 0, 127, 170, 0, 0, 127, 127, 109, 85,
+        		127, 127, 63, 85, 42, 150, 150, 150, 150, 150, 150, 150, 25, 150, 150, 150, 0, 127, 0, 
+        		0, 144, 85, 127, 132, 127, 85, 0, 127, 127, 127, 127, 127, 127, 59, 127, 85, 127, 127,
+        		106, 47, 79, 127, 127, 204, 2, 141, 66, 0, 0, 127, 127, 0, 0, 0, 0, 127, 0, 159, 0,
+        		0, 178, 127, 36, 85, 131, 127, 127, 127, 153, 95, 0, 140, 75, 27, 127, 127, 0, 150,
+        		150, 198, 0, 0, 63, 30, 127, 165, 209, 198, 127, 127, 153, 204, 51, 51, 255, 255, 255,
+        		204, 0, 255, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 0, 150, 150, 150, 150,
+        		150, 0, 127, 127, 150, 150, 150, 150, 150, 150, 150, 150, 0, 0, 150, 51, 132, 150, 150,
+        		150
+        	};
+        	 */
+            // female params
+            m_visualparams = new byte[] {
+                33, 37, 56, 62, 25, 204, 12, 114, 66, 25, 37, 178, 102, 53, 139, 38, 114, 30, 0, 127,
+                102, 122, 76, 66, 63, 76, 38, 63, 122, 102, 158, 0, 203, 255, 0, 127, 0, 0, 255, 0, 28,
+                255, 255, 0, 0, 0, 132, 0, 96, 0, 226, 181, 35, 127, 153, 0, 0, 206, 0, 23, 0, 0, 
+                0, 0, 0, 0, 0, 0, 0, 145, 204, 178, 0, 43, 0, 165, 91, 0, 0, 102, 76, 76, 85,
+                127, 127, 25, 90, 152, 100, 216, 214, 255, 255, 135, 255, 25, 89, 76, 204, 0, 127,
+                73, 0, 147, 139, 142, 125, 114, 117, 0, 127, 193, 132, 127, 132, 122, 59, 63, 81, 127,
+                147, 183, 76, 79, 81, 127, 249, 63, 0, 0, 0, 0, 127, 127, 0, 0, 0, 0, 127, 0, 159, 0, 0,
+                0, 127, 83, 68, 131, 107, 158, 112, 193, 183, 0, 107, 142, 0, 130, 147, 0, 214, 255,
+                198, 0, 0, 96, 30, 122, 165, 209, 198, 127, 127, 153, 255, 255, 255, 255, 255, 255, 255,
+                0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 255, 255, 255, 255, 255, 
+                0, 132, 153, 255, 25, 100, 255, 255, 255, 255, 84, 0, 0, 0, 51, 91, 255, 255, 255, 0,
+                0, 25, 0, 25, 23, 51, 0, 25, 23, 51, 0, 0, 25, 0, 25, 23, 51, 0, 0, 25, 0, 25, 23, 51,
+                0, 25, 23, 51, 0, 25, 23, 51, 0, 127
+            };
+        }
+
+        void SetDefaultTexture()
         {
             m_texture = new Primitive.TextureEntry(new UUID("C228D1CF-4B5D-4BA8-84F4-899A0796AA97"));
             for (uint i = 0; i < TEXTURE_COUNT; i++)
@@ -277,7 +289,7 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         /// <summary>
         ///     Set up appearance textures.
-        ///     Returns boolean that indicates whether the new entries actually change the
+        ///     Returns Boolean that indicates whether the new entries actually change the
         ///     existing values.
         /// </summary>
         public bool SetTextureEntries(Primitive.TextureEntry textureEntry, out List<UUID> ChangedTextures)
@@ -323,7 +335,7 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         /// <summary>
         ///     Set up visual parameters for the avatar and refresh the avatar height
-        ///     Returns boolean that indicates whether the new entries actually change the
+        ///     Returns Boolean that indicates whether the new entries actually change the
         ///     existing values.
         /// </summary>
         public bool SetVisualParams(byte[] visualParams)
@@ -335,16 +347,23 @@ namespace WhiteCore.Framework.ClientInterfaces
             // made. We determine if any of the visual parameters actually
             // changed to know if the appearance should be saved later
             bool changed = false;
-            for (int i = 0; i < VISUALPARAM_COUNT; i++)
+            
+            int newsize = visualParams.Length;
+            
+            if (newsize != m_visualparams.Length)
             {
-                if (visualParams[i] != m_visualparams[i])
+                changed = true;
+                m_visualparams = (byte[])visualParams.Clone();
+            }
+            else
+            {
+            	for (int i = 0; i < newsize; i++)
                 {
-                    // DEBUG ON
-                    //                    MainConsole.Instance.WarnFormat("[AVATARAPPEARANCE] vparams changed [{0}] {1} ==> {2}",
-                    //                                     i,m_visualparams[i],visualParams[i]);
-                    // DEBUG OFF
-                    m_visualparams[i] = visualParams[i];
-                    changed = true;
+                    if (visualParams[i] != m_visualparams[i])
+                    {
+                        m_visualparams[i] = visualParams[i];
+                        changed = true;
+                    }
                 }
             }
 
@@ -382,25 +401,25 @@ namespace WhiteCore.Framework.ClientInterfaces
         }
 
         // DEBUG ON
-        public override String ToString()
+        public override string ToString()
         {
-            String s = "";
+            string s = "";
 
-            s += String.Format("Serial: {0}\n", m_serial);
+            s += string.Format("Serial: {0}\n", m_serial);
 
             for (uint i = 0; i < TEXTURE_COUNT; i++)
                 if (m_texture.FaceTextures[i] != null)
-                    s += String.Format("Texture: {0} --> {1}\n", i, m_texture.FaceTextures[i].TextureID);
+                    s += string.Format("Texture: {0} --> {1}\n", i, m_texture.FaceTextures[i].TextureID);
 
             foreach (AvatarWearable awear in m_wearables)
             {
                 for (int i = 0; i < awear.Count; i++)
-                    s += String.Format("Wearable: item={0}, asset={1}\n", awear[i].ItemID, awear[i].AssetID);
+                    s += string.Format("Wearable: item={0}, asset={1}\n", awear[i].ItemID, awear[i].AssetID);
             }
 
             s += "Visual Params: ";
-            for (uint j = 0; j < VISUALPARAM_COUNT; j++)
-                s += String.Format("{0},", m_visualparams[j]);
+            for (uint j = 0; j < m_visualparams.Length; j++)
+                s += string.Format("{0},", m_visualparams[j]);
             s += "\n";
 
             return s;
@@ -410,30 +429,38 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         /// <summary>
         ///     Get a list of the attachments, note that there may be
-        ///     duplicate attachpoints
+        ///     duplicate attach points
         /// </summary>
         public List<AvatarAttachment> GetAttachments()
         {
-            lock (m_attachments)
+            lock (_attachmentslock)
                 return (from kvp in m_attachments from attach in kvp.Value select new AvatarAttachment(attach)).ToList();
         }
 
         /// <summary>
         ///     Get a list of the attachments, note that there may be
-        ///     duplicate attachpoints
+        ///     duplicate attach points
         /// </summary>
         public Dictionary<int, List<AvatarAttachment>> GetAttachmentsDictionary()
         {
-            lock (m_attachments)
+            lock (_attachmentslock)
                 return new Dictionary<int, List<AvatarAttachment>>(m_attachments);
         }
 
         internal void AppendAttachment(AvatarAttachment attach)
         {
-            lock (m_attachments)
+            lock (_attachmentslock)
             {
                 if (!m_attachments.ContainsKey(attach.AttachPoint))
                     m_attachments[attach.AttachPoint] = new List<AvatarAttachment>();
+
+                // 21/07/2014 Added to prevent Attachments to be added more then once
+                foreach (AvatarAttachment prev in m_attachments[attach.AttachPoint])
+                {
+                    if (prev.ItemID == attach.ItemID)
+                        return;
+                }
+
                 m_attachments[attach.AttachPoint].Add(attach);
             }
         }
@@ -445,7 +472,7 @@ namespace WhiteCore.Framework.ClientInterfaces
         /// <returns>Whether attachments changed</returns>
         internal bool ReplaceAttachment(AvatarAttachment attach)
         {
-            lock (m_attachments)
+            lock (_attachmentslock)
             {
                 bool result = true;
                 if (m_attachments.ContainsKey(attach.AttachPoint))
@@ -460,10 +487,10 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         /// <summary>
         ///     DEPRECATED: USE SetAttachments now
-        ///     Add an attachment, if the attachpoint has the
+        ///     Add an attachment, if the attach point has the
         ///     0x80 bit set then we assume this is an append
         ///     operation otherwise we replace whatever is
-        ///     currently attached at the attachpoint
+        ///     currently attached at the attach point
         /// </summary>
         public bool SetAttachment(int attachpoint, UUID item, UUID asset)
         {
@@ -472,7 +499,7 @@ namespace WhiteCore.Framework.ClientInterfaces
 
             if (item == UUID.Zero)
             {
-                lock (m_attachments)
+                lock (_attachmentslock)
                 {
                     if (m_attachments.ContainsKey(attachpoint))
                         m_attachments.Remove(attachpoint);
@@ -507,7 +534,7 @@ namespace WhiteCore.Framework.ClientInterfaces
         {
             if ((attPnt & 0x80) > 0)
                 return true;
-            lock (m_attachments)
+            lock (_attachmentslock)
             {
                 if (m_attachments.ContainsKey(attPnt))
                 {
@@ -529,7 +556,7 @@ namespace WhiteCore.Framework.ClientInterfaces
                     continue;
                 AvatarAttachment a = new AvatarAttachment(e.GetAttachmentPoint(), e.RootChild.FromUserInventoryItemID,
                                                           e.RootChild.FromUserInventoryAssetID);
-                lock (m_attachments)
+                lock (_attachmentslock)
                 {
                     if (!m_attachments.ContainsKey(e.GetAttachmentPoint()))
                         m_attachments.Add(e.GetAttachmentPoint(), new List<AvatarAttachment>());
@@ -540,7 +567,7 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         public int GetAttachpoint(UUID itemID)
         {
-            lock (m_attachments)
+            lock (_attachmentslock)
             {
                 return (m_attachments.Select(
                     kvp =>
@@ -552,7 +579,7 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         public bool DetachAttachment(UUID itemID)
         {
-            lock (m_attachments)
+            lock (_attachmentslock)
             {
                 foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
                 {
@@ -575,7 +602,7 @@ namespace WhiteCore.Framework.ClientInterfaces
 
         public void ClearAttachments()
         {
-            lock (m_attachments)
+            lock (_attachmentslock)
                 m_attachments.Clear();
         }
 
@@ -627,10 +654,14 @@ namespace WhiteCore.Framework.ClientInterfaces
             data["visualparams"] = visualparams;
 
             // Attachments
-            OSDArray attachs = new OSDArray(m_attachments.Count);
-            foreach (AvatarAttachment attach in GetAttachments())
-                attachs.Add(attach.Pack());
-            data["attachments"] = attachs;
+            int attachCount;
+            lock (_attachmentslock) {
+                attachCount = m_attachments.Count;
+            }
+            OSDArray attachs = new OSDArray (attachCount);
+            foreach (AvatarAttachment attach in GetAttachments ())
+                attachs.Add (attach.Pack ());
+            data ["attachments"] = attachs;
 
             data["wearableCache"] = m_wearableCache.ToOSDMap();
 
@@ -1662,9 +1693,61 @@ namespace WhiteCore.Framework.ClientInterfaces
             SHAPE_EYELID_INNER_CORNER_UP = 214,
             SKIRT_SKIRT_RED = 215,
             SKIRT_SKIRT_GREEN = 216,
-            SKIRT_SKIRT_BLUE = 217
-        }
+            SKIRT_SKIRT_BLUE = 217,
 
+            /// <summary>
+            /// Avatar Physics section.  These are 0 type visual params which get transmitted.
+            /// </summary>
+
+            /// <summary>
+            /// Breast Part 1 
+            /// </summary>
+            BREAST_PHYSICS_MASS = 218,
+            BREAST_PHYSICS_GRAVITY = 219,
+            BREAST_PHYSICS_DRAG = 220,
+            BREAST_PHYSICS_UPDOWN_MAX_EFFECT = 221,
+            BREAST_PHYSICS_UPDOWN_SPRING = 222,
+            BREAST_PHYSICS_UPDOWN_GAIN = 223,
+            BREAST_PHYSICS_UPDOWN_DAMPING = 224,
+            BREAST_PHYSICS_INOUT_MAX_EFFECT = 225,
+            BREAST_PHYSICS_INOUT_SPRING = 226,
+            BREAST_PHYSICS_INOUT_GAIN = 227,
+            BREAST_PHYSICS_INOUT_DAMPING = 228,
+            
+            /// <summary>
+            /// Belly
+            /// </summary>
+            BELLY_PHYISCS_MASS = 229,
+            BELLY_PHYSICS_GRAVITY = 230,
+            BELLY_PHYSICS_DRAG = 231,
+            BELLY_PHYISCS_UPDOWN_MAX_EFFECT = 232,
+            BELLY_PHYSICS_UPDOWN_SPRING = 233,
+            BELLY_PHYSICS_UPDOWN_GAIN = 234,
+            BELLY_PHYSICS_UPDOWN_DAMPING = 235,
+
+            /// <summary>
+            /// Butt
+            /// </summary>
+            BUTT_PHYSICS_MASS = 236,
+            BUTT_PHYSICS_GRAVITY = 237,
+            BUTT_PHYSICS_DRAG = 238,
+            BUTT_PHYSICS_UPDOWN_MAX_EFFECT = 239,
+            BUTT_PHYSICS_UPDOWN_SPRING = 240,
+            BUTT_PHYSICS_UPDOWN_GAIN = 241,
+            BUTT_PHYSICS_UPDOWN_DAMPING = 242,
+            BUTT_PHYSICS_LEFTRIGHT_MAX_EFFECT = 243,
+            BUTT_PHYSICS_LEFTRIGHT_SPRING = 244,
+            BUTT_PHYSICS_LEFTRIGHT_GAIN = 245,
+            BUTT_PHYSICS_LEFTRIGHT_DAMPING = 246,
+            
+            /// <summary>
+            /// Breast Part 2
+            /// </summary>
+            BREAST_PHYSICS_LEFTRIGHT_MAX_EFFECT = 247,
+            BREAST_PHYSICS_LEFTRIGHT_SPRING= 248,
+            BREAST_PHYSICS_LEFTRIGHT_GAIN = 249,
+            BREAST_PHYSICS_LEFTRIGHT_DAMPING = 250
+        }
         #endregion
     }
 }

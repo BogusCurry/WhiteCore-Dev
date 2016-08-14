@@ -25,7 +25,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Xml;
+using System.Xml.Serialization;
+using OpenMetaverse;
+using OpenMetaverse.Packets;
+using OpenMetaverse.StructuredData;
+using ProtoBuf;
 using WhiteCore.Framework.ClientInterfaces;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
@@ -36,16 +46,6 @@ using WhiteCore.Framework.SceneInfo.Entities;
 using WhiteCore.Framework.Serialization;
 using WhiteCore.Framework.Services.ClassHelpers.Assets;
 using WhiteCore.Framework.Utilities;
-using OpenMetaverse;
-using OpenMetaverse.Packets;
-using OpenMetaverse.StructuredData;
-using ProtoBuf;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Xml;
-using System.Xml.Serialization;
 using PrimType = WhiteCore.Framework.SceneInfo.PrimType;
 
 namespace WhiteCore.Region
@@ -119,11 +119,11 @@ namespace WhiteCore.Region
 
         #region Fields
 
-        private readonly List<uint> m_lastColliders = new List<uint>();
+        readonly List<uint> m_lastColliders = new List<uint>();
         [XmlIgnore] public scriptEvents AggregateScriptEvents;
         [XmlIgnore] public bool IgnoreUndoUpdate;
         [XmlIgnore] public bool IsWaitingForFirstSpinUpdatePacket;
-        [XmlIgnore] private PrimFlags LocalFlags;
+        [XmlIgnore] PrimFlags LocalFlags;
         [XmlIgnore] public Vector3 RotationAxis = Vector3.One;
         [XmlIgnore] public Quaternion SpinOldOrientation = Quaternion.Identity;
         [XmlIgnore] public uint TimeStampLastActivity; // Will be used for AutoReturn
@@ -131,24 +131,24 @@ namespace WhiteCore.Region
         [XmlIgnore]
         public bool Undoing { get; set; }
 
-        private UUID _creatorID;
+        UUID _creatorID;
 
-        [XmlIgnore] private UUID m_AttachedAvatar;
-        [XmlIgnore] private Dictionary<int, string> m_CollisionFilter = new Dictionary<int, string>();
-        [XmlIgnore] private bool m_IsAttachment;
-        [XmlIgnore] private int[] m_PayPrice = {-2, -2, -2, -2, -2};
-        [XmlIgnore] private bool m_ValidpartOOB; // control recalcutation
+        [XmlIgnore] UUID m_AttachedAvatar;
+        [XmlIgnore] Dictionary<int, string> m_CollisionFilter = new Dictionary<int, string>();
+        [XmlIgnore] bool m_IsAttachment;
+        [XmlIgnore] int[] m_PayPrice = {-2, -2, -2, -2, -2};
+        [XmlIgnore] bool m_ValidpartOOB; // control recalculation
         protected Vector3 m_acceleration;
         protected Vector3 m_angularVelocity;
-        private byte m_clickAction;
-        private UUID m_collisionSound;
-        private float m_collisionSoundVolume;
-        private UUID m_collisionSprite;
+        byte m_clickAction;
+        UUID m_collisionSound;
+        float m_collisionSoundVolume;
+        UUID m_collisionSprite;
         protected uint m_crc;
-        private string m_creatorData = string.Empty;
-        private string m_description = String.Empty;
+        string m_creatorData = string.Empty;
+        string m_description = String.Empty;
         protected Vector3 m_groupPosition;
-        private Vector3 m_initialPIDLocation = Vector3.Zero;
+        Vector3 m_initialPIDLocation = Vector3.Zero;
         protected SceneObjectPartInventory m_inventory;
         protected Vector3 m_lastAcceleration;
         protected Vector3 m_lastAngularVelocity;
@@ -156,7 +156,7 @@ namespace WhiteCore.Region
         protected Vector3 m_lastPosition;
         protected Quaternion m_lastRotation;
         protected Vector3 m_lastVelocity;
-        private int m_linkNum;
+        int m_linkNum;
         protected uint m_localId;
 
         /// <summary>
@@ -168,33 +168,38 @@ namespace WhiteCore.Region
         protected Vector3 m_offsetPosition;
 
         protected SceneObjectGroup m_parentGroup;
-        [XmlIgnore] private float m_partBSphereRadiusSQ; // the square of the radius of a sphere containing the oob
+        [XmlIgnore] float m_partBSphereRadiusSQ; // the square of the radius of a sphere containing the oob
 
-        [XmlIgnore] private Vector3 m_partOOBoffset;
+        [XmlIgnore] Vector3 m_partOOBoffset;
         // the position center of the bounding box relative to it's Position
 
-        [XmlIgnore] private Vector3 m_partOOBsize;
+        [XmlIgnore] Vector3 m_partOOBsize;
         // the size of a bounding box oriented as prim, is future will consider cutted prims, meshs etc
 
         protected byte[] m_particleSystem = Utils.EmptyBytes;
-        private int m_passTouches;
+        int m_passTouches;
 
-        private PhysicsActor m_physActor;
-        private bool m_pidActive;
-        private bool m_pidhoverActive;
-        private UndoStack<UndoState> m_redo = new UndoStack<UndoState>(5);
+        PhysicsActor m_physActor;
+        bool m_pidActive;
+        bool m_pidhoverActive;
         protected ulong m_regionHandle;
-        [XmlIgnore] private int m_scriptAccessPin;
-        [XmlIgnore] private Dictionary<UUID, scriptEvents> m_scriptEvents = new Dictionary<UUID, scriptEvents>();
+        [XmlIgnore] int m_scriptAccessPin;
+        [XmlIgnore] Dictionary<UUID, scriptEvents> m_scriptEvents = new Dictionary<UUID, scriptEvents>();
         protected PrimitiveBaseShape m_shape;
-        private string m_sitAnimation = "SIT";
-        private string m_sitName = String.Empty;
-        private UUID m_sound;
-        private string m_text = String.Empty;
-        private string m_touchName = String.Empty;
-        private UndoStack<UndoState> m_undo = new UndoStack<UndoState>(5);
+        string m_sitAnimation = "SIT";
+        string m_sitName = String.Empty;
+        UUID m_sound;
+        string m_text = String.Empty;
+        string m_touchName = String.Empty;
+
+        readonly object _undoLock = new object ();
+        readonly object _redoLock = new object ();
+
+        UndoStack<UndoState> m_undo = new UndoStack<UndoState>(5);
+        UndoStack<UndoState> m_redo = new UndoStack<UndoState> (5);
+
         protected UUID m_uuid;
-        private bool m_volumeDetectActive;
+        bool m_volumeDetectActive;
 
         [XmlIgnore]
         [ProtoMember(92)]
@@ -529,23 +534,23 @@ namespace WhiteCore.Region
 
         #region XML Schema
 
-        private uint _baseMask = (uint) PermissionMask.All;
-        private uint _category;
-        private uint _everyoneMask = (uint) PermissionMask.None;
-        private PrimFlags _flags = PrimFlags.None;
-        private UUID _groupID;
-        private uint _groupMask = (uint) PermissionMask.None;
-        private uint _nextOwnerMask = (uint) PermissionMask.All;
-        private byte _objectSaleType;
-        private UUID _ownerID;
-        private uint _ownerMask = (uint) PermissionMask.All;
-        private int _ownershipCost;
-        private uint _parentID;
-        private int _salePrice;
-        private byte[] m_ParticleSystem;
-        private string m_currentMediaVersion = "x-mv:0000000001/00000000-0000-0000-0000-000000000000";
-        private int m_passCollision;
-        private byte[] m_textureAnimation;
+        uint _baseMask = (uint) PermissionMask.All;
+        uint _category;
+        uint _everyoneMask = (uint) PermissionMask.None;
+        PrimFlags _flags = PrimFlags.None;
+        UUID _groupID;
+        uint _groupMask = (uint) PermissionMask.None;
+        uint _nextOwnerMask = (uint) PermissionMask.All;
+        byte _objectSaleType;
+        UUID _ownerID;
+        uint _ownerMask = (uint) PermissionMask.All;
+        int _ownershipCost;
+        uint _parentID;
+        int _salePrice;
+        byte[] m_ParticleSystem;
+        string m_currentMediaVersion = "x-mv:0000000001/00000000-0000-0000-0000-000000000000";
+        int m_passCollision;
+        byte[] m_textureAnimation;
 
         [XmlIgnore]
         public string CurrentMediaVersion
@@ -565,8 +570,8 @@ namespace WhiteCore.Region
             {
                 if (!string.IsNullOrEmpty(m_creatorData))
                     return _creatorID.ToString() + ';' + m_creatorData;
-                else
-                    return _creatorID.ToString();
+                
+                return _creatorID.ToString();
             }
             set
             {
@@ -603,7 +608,7 @@ namespace WhiteCore.Region
         }
 
         /// <summary>
-        ///     This is idential to the Flags property, except that the returned value is uint rather than PrimFlags
+        ///     This is identical to the Flags property, except that the returned value is uint rather than PrimFlags
         /// </summary>
         [Obsolete("Use Flags property instead")]
         public uint ObjectFlags
@@ -617,7 +622,7 @@ namespace WhiteCore.Region
             }
         }
 
-        private Quaternion m_APIDTarget;
+        Quaternion m_APIDTarget;
 
         [XmlIgnore, ProtoMember(65)]
         public Quaternion APIDTarget
@@ -660,13 +665,11 @@ namespace WhiteCore.Region
                 {
                     if (IsAttachment)
                         return OffsetPosition;
-                    else
-                        return AbsolutePosition;
+                    
+                    return AbsolutePosition;
                 }
-                else
-                {
-                    return OffsetPosition;
-                }
+               
+                return OffsetPosition;
             }
         }
 
@@ -843,7 +846,7 @@ namespace WhiteCore.Region
         }
 
         [ProtoMember(60, OverwriteList = true)]
-        public Byte[] TextureAnimation
+        public byte[] TextureAnimation
         {
             get { return m_textureAnimation; }
             set { m_textureAnimation = value; }
@@ -851,7 +854,7 @@ namespace WhiteCore.Region
 
         [XmlIgnore]
         [ProtoMember(61, OverwriteList = true)]
-        public Byte[] ParticleSystem
+        public byte[] ParticleSystem
         {
             get { return m_ParticleSystem; }
             set { m_ParticleSystem = value; }
@@ -920,7 +923,7 @@ namespace WhiteCore.Region
             return RotationOffset;
         }
 
-        private Vector3 m_tempVelocity = Vector3.Zero;
+        Vector3 m_tempVelocity = Vector3.Zero;
 
         /// <summary>
         /// </summary>
@@ -973,7 +976,13 @@ namespace WhiteCore.Region
                 }
                 return m_angularVelocity;
             }
-            set { m_angularVelocity = value; }
+            set 
+            { 
+                m_angularVelocity = value;
+                PhysicsActor actor = PhysActor;
+                if ((actor != null) && actor.IsPhysical)
+                    actor.RotationalVelocity = m_angularVelocity;
+            }
         }
 
         public void GenerateRotationalVelocityFromOmega()
@@ -1193,11 +1202,11 @@ namespace WhiteCore.Region
 
         #region Public Properties with only Get
 
-        private UUID _parentUUID = UUID.Zero;
-        private float m_friction;
-        private float m_density;
-        private float m_gravityMultiplier;
-        private float m_restitution;
+        UUID _parentUUID = UUID.Zero;
+        float m_friction;
+        float m_density;
+        float m_gravityMultiplier;
+        float m_restitution;
 
         public SceneObjectGroup ParentGroup
         {
@@ -1244,8 +1253,8 @@ namespace WhiteCore.Region
             {
                 if (ParentGroup != null && ParentGroup.Scene != null)
                     return ParentGroup.Scene.RegionInfo.RegionID;
-                else
-                    return UUID.Zero;
+                
+                return UUID.Zero;
             }
             set { } // read only
         }
@@ -1499,15 +1508,15 @@ namespace WhiteCore.Region
 
         #endregion Public Properties with only Get
 
-        #region Private Methods
+        #region Methods
 
         public void FinishedSerializingGenericProperties()
         {
-            if ((APIDEnabled || PIDActive) && this.ParentEntity != null) //Make sure to activate it
-                this.ParentEntity.Scene.EventManager.OnFrame += UpdateLookAt;
+            if ((APIDEnabled || PIDActive) && ParentEntity != null) //Make sure to activate it
+                ParentEntity.Scene.EventManager.OnFrame += UpdateLookAt;
         }
 
-        private void UpdateOOBfromOOBs()
+        void UpdateOOBfromOOBs()
         {
             m_partOOBoffset = Vector3.Zero;
 
@@ -1668,7 +1677,7 @@ namespace WhiteCore.Region
         }
 
 
-        private uint ApplyMask(uint val, bool set, uint mask)
+        uint ApplyMask(uint val, bool set, uint mask)
         {
             if (set)
             {
@@ -1680,14 +1689,14 @@ namespace WhiteCore.Region
             }
         }
 
-        private void SendObjectPropertiesToClient(UUID AgentID)
+        void SendObjectPropertiesToClient(UUID AgentID)
         {
             IScenePresence SP = ParentGroup.Scene.GetScenePresence(AgentID);
             if (SP != null)
                 m_parentGroup.GetProperties(SP.ControllingClient);
         }
 
-        #endregion Private Methods
+        #endregion Methods
 
         #region Public Methods
 
@@ -1755,24 +1764,29 @@ namespace WhiteCore.Region
 
         public void AddTextureAnimation(Primitive.TextureAnimation pTexAnim)
         {
-            byte[] data = new byte[16];
-            int pos = 0;
+            byte[] data;
 
-            // The flags don't like conversion from uint to byte, so we have to do
-            // it the crappy way.  See the above function :(
+            if (pTexAnim.Flags == Primitive.TextureAnimMode.ANIM_OFF)
+            {
+                data = Utils.EmptyBytes;
+            }
+            else
+            {
+                data = new byte[16];
+                int pos = 0;
 
-            data[pos] = ConvertScriptUintToByte((uint) pTexAnim.Flags);
-            pos++;
-            data[pos] = (byte) pTexAnim.Face;
-            pos++;
-            data[pos] = (byte) pTexAnim.SizeX;
-            pos++;
-            data[pos] = (byte) pTexAnim.SizeY;
-            pos++;
+                // The flags don't like conversion from uint to byte, so we have to do
+                // it the crappy way.  See the above function :(
 
-            Utils.FloatToBytes(pTexAnim.Start).CopyTo(data, pos);
-            Utils.FloatToBytes(pTexAnim.Length).CopyTo(data, pos + 4);
-            Utils.FloatToBytes(pTexAnim.Rate).CopyTo(data, pos + 8);
+                data[pos] = ConvertScriptUintToByte((uint)pTexAnim.Flags); pos++;
+                data[pos] = (byte)pTexAnim.Face; pos++;
+                data[pos] = (byte)pTexAnim.SizeX; pos++;
+                data[pos] = (byte)pTexAnim.SizeY; pos++;
+
+                Utils.FloatToBytes(pTexAnim.Start).CopyTo(data, pos);
+                Utils.FloatToBytes(pTexAnim.Length).CopyTo(data, pos + 4);
+                Utils.FloatToBytes(pTexAnim.Rate).CopyTo(data, pos + 8);
+            }
 
             TextureAnimation = data;
         }
@@ -2007,8 +2021,8 @@ namespace WhiteCore.Region
         {
             if (PhysActor != null)
                 return PhysActor.Force;
-            else
-                return Vector3.Zero;
+
+            return Vector3.Zero;
         }
 
         public void GetProperties(IClientAPI client)
@@ -2219,8 +2233,6 @@ namespace WhiteCore.Region
         /// <param name="triggered"></param>
         /// <param name="flags"></param>
         /// <param name="radius"></param>
-        /// <param name="useMaster"></param>
-        /// <param name="isMaster"></param>
         public void SendSound(string sound, double volume, bool triggered, byte flags, float radius)
         {
             if (sound == "" || sound == UUID.Zero.ToString())
@@ -2485,7 +2497,7 @@ namespace WhiteCore.Region
                     break;
                 case PrimType.SCULPT:
                     // Special mesh handling
-                    if (this.Shape.SculptType == 5)
+                    if (Shape.SculptType == 5)
                     {
                         ret = 8; // its a mesh then max 8 faces
                     }
@@ -2625,7 +2637,7 @@ namespace WhiteCore.Region
                         ParentGroup.Scene != null &&
                         (backup == null || (backup != null && !backup.LoadingPrims)))
                     {
-                        lock (m_undo)
+                        lock (_undoLock)
                         {
                             if (m_undo.Count > 0)
                             {
@@ -3008,33 +3020,43 @@ namespace WhiteCore.Region
 
         public void Undo()
         {
-            lock (m_undo)
+            var undoCount = 0;
+            lock (_undoLock)
+                undoCount = m_undo.Count;
+            
+            if (undoCount > 0)
             {
-                if (m_undo.Count > 0)
-                {
+                lock(_redoLock)
                     m_redo.Push(new UndoState(this));
-                    UndoState goback = m_undo.Pop();
-                    if (goback != null)
-                    {
-                        goback.PlaybackState(this);
-                    }
+
+                UndoState goback = null;
+                lock(_undoLock)
+                    goback = m_undo.Pop();
+
+                if (goback != null) {
+                    goback.PlaybackState(this);
                 }
             }
         }
 
         public void Redo()
         {
-            lock (m_redo)
-            {
-                if (m_redo.Count > 0)
-                {
-                    UndoState nUndo = new UndoState(this);
-                    m_undo.Push(nUndo);
+            var redoCount = 0;
+            lock (_redoLock)
+                redoCount = m_redo.Count;
 
-                    UndoState gofwd = m_redo.Pop();
-                    if (gofwd != null)
-                        gofwd.PlayfwdState(this);
+            if (redoCount > 0) {
+                lock(_undoLock) {
+                    UndoState nUndo = new UndoState (this);
+                    m_undo.Push (nUndo);
                 }
+
+                UndoState gofwd = null;
+                lock(_redoLock)
+                    gofwd = m_redo.Pop();
+                
+                if (gofwd != null)
+                    gofwd.PlayfwdState(this);
             }
         }
 
@@ -3093,12 +3115,9 @@ namespace WhiteCore.Region
                     needsPhysicalRebuild = true; //Gotta rebuild now
                 }
                 //These 3 are dynamic properties, and don't require rebuilding the physics representation
-                if (Friction != block.Friction)
-                    Friction = block.Friction;
-                if (Restitution != block.Restitution)
-                    Restitution = block.Restitution;
-                if (GravityMultiplier != block.GravityMultiplier)
-                    GravityMultiplier = block.GravityMultiplier;
+                Friction = block.Friction;
+                Restitution = block.Restitution;
+                GravityMultiplier = block.GravityMultiplier;
             }
 
             if ((UsePhysics == wasUsingPhysics) && (wasTemporary == IsTemporary) && (wasPhantom == IsPhantom) &&
@@ -3189,7 +3208,7 @@ namespace WhiteCore.Region
                 {
                     // Remove VolumeDetect in any case. Note, it's safe to call SetVolumeDetect as often as you like
                     // (mumbles, well, at least if you have infinte CPU powers :-))
-                    PhysicsActor pa = this.PhysActor;
+                    PhysicsActor pa = PhysActor;
                     if (pa != null)
                         PhysActor.VolumeDetect = false;
 
@@ -3236,8 +3255,8 @@ namespace WhiteCore.Region
 
         /// <summary>
         ///     Having this function because I found when scripts updated the shape.. over and over, it would fill up the memory
-        ///     Having the extra paramater updatePhysics can prevent physics updates on the changes
-        ///     The onlyplace this effects is if a script changes the shape
+        ///     Having the extra parameter updatePhysics can prevent physics updates on the changes
+        ///     The only place this effects is if a script changes the shape
         ///     If the LocklessQueue gets updated this can be removed
         /// </summary>
         /// <param name="shapeBlock"></param>
@@ -3445,18 +3464,47 @@ namespace WhiteCore.Region
 
         #region Vehicle Params
 
-        private OSDArray m_VehicleFlags;
+        OSDArray m_VehicleFlags;
 
-        private OSDMap m_VehicleParams;
+        OSDMap m_VehicleParams;
 
+        [ProtoMember(110)]
         public int VehicleType { get; set; }
+
+        [ProtoMember(111)]
+        string _vehicleFlags
+        {
+            get {
+                return m_VehicleFlags == null ? "" : OSDParser.SerializeLLSDXmlString(m_VehicleFlags);
+            }
+            set {
+                if (value != null)
+                    m_VehicleFlags =  value == "" ? null : (OSDArray)OSDParser.DeserializeLLSDXml(value);
+            }
+        }
+
+        [ProtoMember(112)]
+        string _vehicleParams
+        {
+            get { 
+                return m_VehicleParams == null ? "" : OSDParser.SerializeJsonString(m_VehicleParams, true);
+            }
+            set {
+                if (value != null)
+                    m_VehicleParams = value == "" ? null : (OSDMap) OSDParser.DeserializeJson(value);
+            }
+        }
+
 
         public OSDArray VehicleFlags
         {
             get
             {
                 if (m_VehicleFlags == null)
-                    m_VehicleFlags = new OSDArray();
+                {
+                    m_VehicleFlags = new OSDArray ();
+                    m_VehicleFlags.Add (0);                 
+                }
                 return m_VehicleFlags;
             }
             set { m_VehicleFlags = value; }
@@ -3467,11 +3515,16 @@ namespace WhiteCore.Region
             get
             {
                 if (m_VehicleParams == null)
-                    m_VehicleParams = new OSDMap();
+                {
+                    m_VehicleParams = new OSDMap ();
+                    //m_VehicleParams ["99"] = 0;
+                }
                 return m_VehicleParams;
             }
             set { m_VehicleParams = value; }
         }
+
+           
 
         #endregion
 
@@ -3513,7 +3566,7 @@ namespace WhiteCore.Region
                     }
                     catch (Exception ex)
                     {
-                        MainConsole.Instance.Error("[SCENEOBJECTPART]: ROTATIONOFFSET" + ex.Message);
+                        MainConsole.Instance.Error("[Scene object part]: Rotation offset exception - " + ex.Message);
                     }
                 }
             }
@@ -3536,7 +3589,7 @@ namespace WhiteCore.Region
             FixGroupPositionComum(true, value, single);
         }
 
-        public void FixGroupPositionComum(bool UpdatePrimActor, Vector3 value, bool single)
+        public void FixGroupPositionComum(bool updatePrimActor, Vector3 value, bool single)
         {
             bool TriggerMoving_End = false;
             if (m_groupPosition != value)
@@ -3555,10 +3608,10 @@ namespace WhiteCore.Region
             {
                 if (actor.PhysicsActorType != (int) ActorTypes.Prim) // for now let other times get updates
                 {
-                    UpdatePrimActor = true;
+                    updatePrimActor = true;
                     single = false;
                 }
-                if (UpdatePrimActor)
+                if (updatePrimActor)
                 {
                     try
                     {
@@ -3578,7 +3631,7 @@ namespace WhiteCore.Region
                     }
                     catch (Exception e)
                     {
-                        MainConsole.Instance.Error("[SCENEOBJECTPART]: GROUP POSITION. " + e.Message);
+                        MainConsole.Instance.Error("[Scene object part]: Group position exception - " + e.Message);
                     }
                 }
             }
@@ -3623,9 +3676,9 @@ namespace WhiteCore.Region
 
         public void ClearUndoState()
         {
-            lock (m_undo)
+            lock (_undoLock)
                 m_undo = new UndoStack<UndoState>(5);
-            lock (m_redo)
+            lock (_redoLock)
                 m_redo = new UndoStack<UndoState>(5);
 
             StoreUndoState();
@@ -3696,7 +3749,7 @@ namespace WhiteCore.Region
             dupe.Shape.ExtraParams = extraP;
 
             dupe.m_scriptEvents = new Dictionary<UUID, scriptEvents>();
-            dupe.Shape.SculptData = this.Shape.SculptData;
+            dupe.Shape.SculptData = Shape.SculptData;
             dupe.GenerateRotationalVelocityFromOmega();
 
             return dupe;
@@ -3706,22 +3759,22 @@ namespace WhiteCore.Region
         {
             if (asset != null)
             {
-                this.Shape.SculptEntry = true;
-                this.Shape.SculptData = asset.Data; //Set the asset data
+                Shape.SculptEntry = true;
+                Shape.SculptData = asset.Data; //Set the asset data
             }
 
             bool isMesh = asset == null ? false : (asset.Type == (int) AssetType.Mesh);
             if (isMesh)
-                this.Shape.SculptType = (byte) SculptType.Mesh;
+                Shape.SculptType = (byte) SculptType.Mesh;
             PrimitiveBaseShape shape = Shape.Copy();
-            if ((bool) sender && this.PhysActor != null &&
-                (asset != null || (this.Shape.SculptData != null && this.Shape.SculptData.Length != 0)))
+            if ((bool) sender && PhysActor != null &&
+                (asset != null || (Shape.SculptData != null && Shape.SculptData.Length != 0)))
                 //Update physics
             {
                 //Get physics to update in a hackish way
-                this.PhysActor.Shape = shape;
+                PhysActor.Shape = shape;
             }
-            this.Shape = shape;
+            Shape = shape;
         }
 
         public double GetDistanceTo(Vector3 a, Vector3 b)
@@ -4018,25 +4071,25 @@ namespace WhiteCore.Region
                                 return;
                             //Always send to the prim it is occuring to
                             m_parentGroup.Scene.EventManager.TriggerScriptCollidingStart(this, StartCollidingMessage);
-                            if ((this.UUID != this.ParentGroup.RootPart.UUID))
+                            if ((UUID != ParentGroup.RootPart.UUID))
                             {
                                 const int PASS_IF_NOT_HANDLED = 0;
                                 const int PASS_ALWAYS = 1;
                                 const int PASS_NEVER = 2;
-                                if (this.PassCollisions == PASS_NEVER)
+                                if (PassCollisions == PASS_NEVER)
                                 {
                                 }
-                                if (this.PassCollisions == PASS_ALWAYS)
+                                if (PassCollisions == PASS_ALWAYS)
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptCollidingStart(
-                                        this.ParentGroup.RootPart, StartCollidingMessage);
+                                        ParentGroup.RootPart, StartCollidingMessage);
                                 }
-                                else if (((this.ScriptEvents & scriptEvents.collision_start) == 0) &&
-                                         this.PassCollisions == PASS_IF_NOT_HANDLED)
+                                else if (((ScriptEvents & scriptEvents.collision_start) == 0) &&
+                                         PassCollisions == PASS_IF_NOT_HANDLED)
                                     //If no event in this prim, pass to parent
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptCollidingStart(
-                                        this.ParentGroup.RootPart, StartCollidingMessage);
+                                        ParentGroup.RootPart, StartCollidingMessage);
                                 }
                             }
                         }
@@ -4136,9 +4189,6 @@ namespace WhiteCore.Region
                                                 colliding.Add(detobj);
                                             }
                                                 //If it is 0, it is to not accept collisions from this avatar
-                                            else
-                                            {
-                                            }
                                         }
                                         else
                                         {
@@ -4177,25 +4227,25 @@ namespace WhiteCore.Region
 
                             m_parentGroup.Scene.EventManager.TriggerScriptColliding(this, CollidingMessage);
 
-                            if ((this.UUID != this.ParentGroup.RootPart.UUID))
+                            if ((UUID != ParentGroup.RootPart.UUID))
                             {
                                 const int PASS_IF_NOT_HANDLED = 0;
                                 const int PASS_ALWAYS = 1;
                                 const int PASS_NEVER = 2;
-                                if (this.PassCollisions == PASS_NEVER)
+                                if (PassCollisions == PASS_NEVER)
                                 {
                                 }
-                                if (this.PassCollisions == PASS_ALWAYS)
+                                if (PassCollisions == PASS_ALWAYS)
                                 {
-                                    m_parentGroup.Scene.EventManager.TriggerScriptColliding(this.ParentGroup.RootPart,
+                                    m_parentGroup.Scene.EventManager.TriggerScriptColliding(ParentGroup.RootPart,
                                                                                             CollidingMessage);
                                 }
-                                else if (((this.ScriptEvents & scriptEvents.collision) == 0) &&
-                                         this.PassCollisions == PASS_IF_NOT_HANDLED)
+                                else if (((ScriptEvents & scriptEvents.collision) == 0) &&
+                                         PassCollisions == PASS_IF_NOT_HANDLED)
                                     //If no event in this prim, pass to parent
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptColliding(
-                                        this.ParentGroup.RootPart, CollidingMessage);
+                                        ParentGroup.RootPart, CollidingMessage);
                                 }
                             }
                         }
@@ -4344,25 +4394,25 @@ namespace WhiteCore.Region
 
                             m_parentGroup.Scene.EventManager.TriggerScriptCollidingEnd(this, EndCollidingMessage);
 
-                            if ((this.UUID != this.ParentGroup.RootPart.UUID))
+                            if ((UUID != ParentGroup.RootPart.UUID))
                             {
                                 const int PASS_IF_NOT_HANDLED = 0;
                                 const int PASS_ALWAYS = 1;
                                 const int PASS_NEVER = 2;
-                                if (this.PassCollisions == PASS_NEVER)
+                                if (PassCollisions == PASS_NEVER)
                                 {
                                 }
-                                if (this.PassCollisions == PASS_ALWAYS)
+                                if (PassCollisions == PASS_ALWAYS)
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptCollidingEnd(
-                                        this.ParentGroup.RootPart, EndCollidingMessage);
+                                        ParentGroup.RootPart, EndCollidingMessage);
                                 }
-                                else if (((this.ScriptEvents & scriptEvents.collision_end) == 0) &&
-                                         this.PassCollisions == PASS_IF_NOT_HANDLED)
+                                else if (((ScriptEvents & scriptEvents.collision_end) == 0) &&
+                                         PassCollisions == PASS_IF_NOT_HANDLED)
                                     //If no event in this prim, pass to parent
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptCollidingEnd(
-                                        this.ParentGroup.RootPart, EndCollidingMessage);
+                                        ParentGroup.RootPart, EndCollidingMessage);
                                 }
                             }
                         }
@@ -4399,28 +4449,27 @@ namespace WhiteCore.Region
                             if (m_parentGroup.Scene == null)
                                 return;
 
-                            m_parentGroup.Scene.EventManager.TriggerScriptLandCollidingStart(this,
-                                                                                             LandStartCollidingMessage);
+                            m_parentGroup.Scene.EventManager.TriggerScriptLandCollidingStart(this, LandStartCollidingMessage);
 
-                            if ((this.UUID != this.ParentGroup.RootPart.UUID))
+                            if ((UUID != ParentGroup.RootPart.UUID))
                             {
                                 const int PASS_IF_NOT_HANDLED = 0;
                                 const int PASS_ALWAYS = 1;
                                 const int PASS_NEVER = 2;
-                                if (this.PassCollisions == PASS_NEVER)
+                                if (PassCollisions == PASS_NEVER)
                                 {
                                 }
-                                if (this.PassCollisions == PASS_ALWAYS)
+                                if (PassCollisions == PASS_ALWAYS)
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptLandCollidingStart(
-                                        this.ParentGroup.RootPart, LandStartCollidingMessage);
+                                        ParentGroup.RootPart, LandStartCollidingMessage);
                                 }
-                                else if (((this.ScriptEvents & scriptEvents.land_collision_start) == 0) &&
-                                         this.PassCollisions == PASS_IF_NOT_HANDLED)
+                                else if (((ScriptEvents & scriptEvents.land_collision_start) == 0) &&
+                                         PassCollisions == PASS_IF_NOT_HANDLED)
                                     //If no event in this prim, pass to parent
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptLandCollidingStart(
-                                        this.ParentGroup.RootPart, LandStartCollidingMessage);
+                                        ParentGroup.RootPart, LandStartCollidingMessage);
                                 }
                             }
                         }
@@ -4464,26 +4513,26 @@ namespace WhiteCore.Region
 
                             m_parentGroup.Scene.EventManager.TriggerScriptLandColliding(this, LandCollidingMessage);
 
-                            if ((this.UUID != this.ParentGroup.RootPart.UUID))
+                            if ((UUID != ParentGroup.RootPart.UUID))
                             {
                                 const int PASS_IF_NOT_HANDLED = 0;
                                 const int PASS_ALWAYS = 1;
                                 const int PASS_NEVER = 2;
-                                if (this.PassCollisions == PASS_NEVER)
+                                if (PassCollisions == PASS_NEVER)
                                 {
                                 }
-                                if (this.PassCollisions == PASS_ALWAYS)
+                                if (PassCollisions == PASS_ALWAYS)
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptLandColliding(
-                                        this.ParentGroup.RootPart,
+                                        ParentGroup.RootPart,
                                         LandCollidingMessage);
                                 }
-                                else if (((this.ScriptEvents & scriptEvents.land_collision) == 0) &&
-                                         this.PassCollisions == PASS_IF_NOT_HANDLED)
+                                else if (((ScriptEvents & scriptEvents.land_collision) == 0) &&
+                                         PassCollisions == PASS_IF_NOT_HANDLED)
                                     //If no event in this prim, pass to parent
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptLandColliding(
-                                        this.ParentGroup.RootPart, LandCollidingMessage);
+                                        ParentGroup.RootPart, LandCollidingMessage);
                                 }
                             }
                         }
@@ -4521,25 +4570,25 @@ namespace WhiteCore.Region
 
                             m_parentGroup.Scene.EventManager.TriggerScriptLandCollidingEnd(this, LandEndCollidingMessage);
 
-                            if ((this.UUID != this.ParentGroup.RootPart.UUID))
+                            if ((UUID != ParentGroup.RootPart.UUID))
                             {
                                 const int PASS_IF_NOT_HANDLED = 0;
                                 const int PASS_ALWAYS = 1;
                                 const int PASS_NEVER = 2;
-                                if (this.PassCollisions == PASS_NEVER)
+                                if (PassCollisions == PASS_NEVER)
                                 {
                                 }
-                                if (this.PassCollisions == PASS_ALWAYS)
+                                if (PassCollisions == PASS_ALWAYS)
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptLandCollidingEnd(
-                                        this.ParentGroup.RootPart, LandEndCollidingMessage);
+                                        ParentGroup.RootPart, LandEndCollidingMessage);
                                 }
-                                else if (((this.ScriptEvents & scriptEvents.land_collision_end) == 0) &&
-                                         this.PassCollisions == PASS_IF_NOT_HANDLED)
+                                else if (((ScriptEvents & scriptEvents.land_collision_end) == 0) &&
+                                         PassCollisions == PASS_IF_NOT_HANDLED)
                                     //If no event in this prim, pass to parent
                                 {
                                     m_parentGroup.Scene.EventManager.TriggerScriptLandCollidingEnd(
-                                        this.ParentGroup.RootPart, LandEndCollidingMessage);
+                                        ParentGroup.RootPart, LandEndCollidingMessage);
                                 }
                             }
                         }
@@ -4610,7 +4659,7 @@ namespace WhiteCore.Region
         /// </summary>
         /// <param name="flags"></param>
         /// <returns></returns>
-        private bool IsTerse(PrimUpdateFlags flags)
+        bool IsTerse(PrimUpdateFlags flags)
         {
             return flags.HasFlag((PrimUpdateFlags.TerseUpdate))
                    && !flags.HasFlag((PrimUpdateFlags.AttachmentPoint | PrimUpdateFlags.ClickAction |
@@ -4626,23 +4675,23 @@ namespace WhiteCore.Region
                    !flags.HasFlag(PrimUpdateFlags.ForcedFullUpdate);
         }
 
-        public void SetAttachmentPoint(int AttachmentPoint)
+        public void SetAttachmentPoint(int attachmentPoint)
         {
             //Update the saved if needed
-            if (AttachmentPoint == 0 && this.AttachmentPoint != 0)
+            if (attachmentPoint == 0 && AttachmentPoint != 0)
             {
-                this.SavedAttachedPos = this.AttachedPos;
-                this.SavedAttachmentPoint = this.AttachmentPoint;
+                SavedAttachedPos = AttachedPos;
+                SavedAttachmentPoint = AttachmentPoint;
             }
 
-            this.AttachmentPoint = AttachmentPoint;
+            AttachmentPoint = attachmentPoint;
 
-            IsAttachment = AttachmentPoint != 0;
+            IsAttachment = attachmentPoint != 0;
 
             // save the attachment point.
             //if (AttachmentPoint != 0)
             //{
-            m_shape.State = (byte) AttachmentPoint;
+            m_shape.State = (byte) attachmentPoint;
             //}
         }
 
@@ -4728,23 +4777,23 @@ namespace WhiteCore.Region
             }
         }
 
-        public void UpdatePermissions(UUID AgentID, byte field, uint localID, uint mask, byte addRemTF)
+        public void UpdatePermissions(UUID agentID, byte field, uint localID, uint mask, byte addRemTF)
         {
             bool set = addRemTF == 1;
-            bool god = m_parentGroup.Scene.Permissions.IsGod(AgentID);
+            bool god = m_parentGroup.Scene.Permissions.IsGod(agentID);
 
             uint baseMask = _baseMask;
             if (god)
                 baseMask = 0x7ffffff0;
 
             // Are we the owner?
-            if (m_parentGroup.Scene.Permissions.CanEditObject(this.UUID, AgentID))
+            if (m_parentGroup.Scene.Permissions.CanEditObject(UUID, agentID))
             {
                 uint exportPermission = (1 << 30);
                 if ((mask & exportPermission) == exportPermission)
                 {
                     //Only the creator can set export permissions
-                    if (CreatorID != AgentID)
+                    if (CreatorID != agentID)
                         mask &= exportPermission;
                 }
 
@@ -4784,7 +4833,7 @@ namespace WhiteCore.Region
                 }
                 ParentGroup.ScheduleGroupUpdate(PrimUpdateFlags.PrimFlags);
 
-                SendObjectPropertiesToClient(AgentID);
+                SendObjectPropertiesToClient(agentID);
             }
         }
 
@@ -4885,7 +4934,7 @@ namespace WhiteCore.Region
             _ownerMask = permissions;
         }
 
-        private void UpdateLookAt()
+        void UpdateLookAt()
         {
             try
             {
@@ -4946,17 +4995,33 @@ namespace WhiteCore.Region
                 }
                 if (APIDEnabled)
                 {
-                    if (APIDIterations <= 1)
+                    PhysicsActor pa = ParentGroup.RootPart.PhysActor;
+                    if (pa == null || !pa.IsPhysical || APIDStrength < 0.04)
                     {
-                        UpdateRotation(APIDTarget);
-                        APIDTarget = Quaternion.Identity;
+                        StopLookAt();
                         return;
                     }
 
-                    Quaternion rot = Quaternion.Slerp(GetRotationOffset(), APIDTarget, 1.0f/(float) APIDIterations);
-                    UpdateRotation(rot);
+                    Quaternion currRot = GetWorldRotation();
+                    currRot.Normalize();
 
-                    APIDIterations--;
+                    // difference between current orientation and desired orientation
+                    Quaternion dR = currRot / APIDTarget;
+
+                    // find axis and angle of rotation to rotate to desired orientation
+                    Vector3 axis = Vector3.UnitX;
+                    
+                    float angle;
+                    dR.GetAxisAngle(out axis, out angle);
+                    axis = axis * currRot;
+
+                    // clamp strength to avoid overshoot
+                    float strength = 1.0f / APIDStrength;
+                    if (strength > 1.0) strength = 1.0f;
+
+                    // set angular velocity to rotate to desired orientation
+                    // with velocity proportional to strength and angle
+                    AngularVelocity = axis * angle * strength * (float)Math.PI;
                 }
             }
             catch (Exception ex)

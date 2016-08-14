@@ -25,16 +25,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Services;
 using WhiteCore.Simulation.Base;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-
-[assembly: AssemblyVersion("0.9.1")]
-[assembly: AssemblyFileVersion("0.9.1")]
 
 namespace WhiteCore.Servers.InventoryServer
 {
@@ -52,7 +48,7 @@ namespace WhiteCore.Servers.InventoryServer
                                                                        typeof (IInventoryData),
                                                                        typeof (IUserAccountData),
                                                                        typeof (IAssetDataPlugin),
-                                                                       typeof (ISimpleCurrencyConnector),
+                                                                       typeof (IBaseCurrencyConnector),
                                                                        typeof (IAgentInfoConnector)
                                                                    },
                                                                new List<Type>

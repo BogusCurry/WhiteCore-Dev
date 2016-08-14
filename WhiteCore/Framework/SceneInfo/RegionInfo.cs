@@ -25,13 +25,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework.Modules;
-using WhiteCore.Framework.Utilities;
+using System;
+using System.IO;
+using System.Xml;
+using System.Xml.Serialization;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using ProtoBuf;
-using System;
-using System.Net;
+using WhiteCore.Framework.Modules;
+using WhiteCore.Framework.Utilities;
 
 namespace WhiteCore.Framework.SceneInfo
 {
@@ -44,27 +46,43 @@ namespace WhiteCore.Framework.SceneInfo
     [Serializable, ProtoContract(UseProtoMembersOnly = false)]
     public class RegionInfo : AllScopeIDImpl
     {
-        private RegionSettings m_regionSettings;
+        RegionSettings m_regionSettings;
+        UUID m_GridSecureSessionID = UUID.Zero;
+        bool m_seeIntoThisSimFromNeighbor = true;
 
         protected int m_objectCapacity = 0;
-        protected string m_regionType = String.Empty;
+        protected string m_regionType = string.Empty;
         protected uint m_httpPort;
-        protected string m_regionName = String.Empty;
+        protected string m_regionName = string.Empty;
         protected int m_regionLocX;
         protected int m_regionLocY;
         protected int m_regionLocZ;
         protected int m_regionPort;
-        private UUID m_GridSecureSessionID = UUID.Zero;
+        protected string m_regionTerrain = "Flatland";
+        protected uint m_regionArea;
+
+
+        [XmlIgnore]
         public bool NewRegion = false;
+
+        [XmlIgnore]
         public bool HasBeenDeleted { get; set; }
-        private bool m_seeIntoThisSimFromNeighbor = true;
 
-        [ProtoMember(1)] public UUID RegionID = UUID.Zero;
-        [ProtoMember(2)] public StartupType Startup = StartupType.Normal;
+        [ProtoMember(1)]
+        [XmlIgnore]
+        public UUID RegionID = UUID.Zero;
 
-        [ProtoMember(3)] public OpenRegionSettings OpenRegionSettings = new OpenRegionSettings();
+        [ProtoMember(2)]
+        [XmlIgnore]
+        public StartupType Startup = StartupType.Normal;
 
-        [ProtoMember(4)] public OSD EnvironmentSettings = null;
+        [ProtoMember(3)]
+        //[XmlIgnore]
+        public OpenRegionSettings OpenRegionSettings = new OpenRegionSettings();
+
+        [ProtoMember(4)]
+        //[XmlIgnore]
+        public OSD EnvironmentSettings = null;
 
         /// <summary>
         ///     The X length (in meters) that the region is
@@ -87,19 +105,23 @@ namespace WhiteCore.Framework.SceneInfo
         /// <summary>
         ///     The region flags (as set on the Grid Server in the database), cached on RegisterRegion call
         /// </summary>
-        [ProtoMember(8)] public int RegionFlags = -1;
+        [ProtoMember(8)]
+        [XmlIgnore]
+        public int RegionFlags = -1;
 
         [ProtoMember(9)]
         public EstateSettings EstateSettings { get; set; }
 
         [ProtoMember(10)]
+        //[XmlIgnore]
         public RegionSettings RegionSettings
         {
             get { return m_regionSettings ?? (m_regionSettings = new RegionSettings()); }
             set { m_regionSettings = value; }
         }
 
-        [ProtoMember(11)] public bool InfiniteRegion = false;
+        [ProtoMember(11)]
+        public bool InfiniteRegion = true;
 
         [ProtoMember(13)]
         public bool SeeIntoThisSimFromNeighbor
@@ -130,6 +152,7 @@ namespace WhiteCore.Framework.SceneInfo
         }
 
         [ProtoMember(18)]
+        [XmlIgnore]
         public UUID GridSecureSessionID
         {
             get { return m_GridSecureSessionID; }
@@ -171,6 +194,20 @@ namespace WhiteCore.Framework.SceneInfo
             set { m_regionPort = value; }
         }
 
+        [ProtoMember(25)]
+        public string RegionTerrain
+        {
+            get { return m_regionTerrain; }
+            set { m_regionTerrain = value; }
+        }
+
+        [ProtoMember(26)]
+        public uint RegionArea
+        {
+            get { return m_regionArea; }
+            set { m_regionArea = value; }
+        }
+
         public ulong RegionHandle
         {
             get { return Utils.UIntsToLong((uint) RegionLocX, (uint) RegionLocY); }
@@ -184,7 +221,7 @@ namespace WhiteCore.Framework.SceneInfo
                 args["region_name"] = OSD.FromString(RegionName);
             args["region_xloc"] = OSD.FromString(RegionLocX.ToString());
             args["region_yloc"] = OSD.FromString(RegionLocY.ToString());
-            if (RegionType != String.Empty)
+            if (RegionType != string.Empty)
                 args["region_type"] = OSD.FromString(RegionType);
             args["region_size_x"] = OSD.FromInteger(RegionSizeX);
             args["region_size_y"] = OSD.FromInteger(RegionSizeY);
@@ -201,6 +238,10 @@ namespace WhiteCore.Framework.SceneInfo
             if (EnvironmentSettings != null)
                 args["EnvironmentSettings"] = EnvironmentSettings;
             args["OpenRegionSettings"] = OpenRegionSettings.ToOSD();
+            if (RegionTerrain != string.Empty)
+                args["region_terrain"] = OSD.FromString(RegionTerrain);
+            args["region_area"] = OSD.FromInteger(RegionArea);
+
             return args;
         }
 
@@ -211,17 +252,17 @@ namespace WhiteCore.Framework.SceneInfo
             if (args.ContainsKey("region_name"))
                 RegionName = args["region_name"].AsString();
             if (args.ContainsKey("http_port"))
-                UInt32.TryParse(args["http_port"].AsString(), out m_httpPort);
+                uint.TryParse(args["http_port"].AsString(), out m_httpPort);
             if (args.ContainsKey("region_xloc"))
             {
                 int locx;
-                Int32.TryParse(args["region_xloc"].AsString(), out locx);
+                int.TryParse(args["region_xloc"].AsString(), out locx);
                 RegionLocX = locx;
             }
             if (args.ContainsKey("region_yloc"))
             {
                 int locy;
-                Int32.TryParse(args["region_yloc"].AsString(), out locy);
+                int.TryParse(args["region_yloc"].AsString(), out locy);
                 RegionLocY = locy;
             }
             if (args.ContainsKey("region_type"))
@@ -265,6 +306,11 @@ namespace WhiteCore.Framework.SceneInfo
                 OpenRegionSettings = new OpenRegionSettings();
             if (args.ContainsKey("EnvironmentSettings"))
                 EnvironmentSettings = args["EnvironmentSettings"];
+            if (args.ContainsKey("region_terrain"))
+                m_regionTerrain = args["region_terrain"].AsString();
+            if (args.ContainsKey("region_area"))
+                RegionArea = (uint) args["region_area"].AsInteger();
+
         }
 
         public override void FromOSD(OSDMap map)
@@ -276,5 +322,91 @@ namespace WhiteCore.Framework.SceneInfo
         {
             return PackRegionInfoData();
         }
+
+        // File based loading
+        //
+
+        /// <summary>
+        /// Initializes a new instance of a regions when loaded from a definition file"/> class.
+        /// </summary>
+        /// <param name="fileName">File name.</param>
+        public void LoadRegionConfig(string fileName) 
+        {
+            RegionInfo ri = (RegionInfo)DeserializeObject(fileName);
+
+            RegionID = ri.RegionID;
+            RegionName = ri.RegionName;
+            RegionPort = ri.RegionPort;
+            RegionLocX = ri.RegionLocX;
+            RegionLocY = ri.RegionLocY;
+            RegionType = ri.RegionType;
+            RegionSizeX = ri.RegionSizeX;
+            RegionSizeY = ri.RegionSizeY;
+            RegionSizeZ = ri.RegionSizeZ;
+            ObjectCapacity = ri.ObjectCapacity;
+            SeeIntoThisSimFromNeighbor = ri.SeeIntoThisSimFromNeighbor;
+            InfiniteRegion = ri.InfiniteRegion;
+            EstateSettings = ri.EstateSettings;
+            RegionSettings = ri.RegionSettings;
+            //GridSecureSessionID = ri.GridSecureSessionID;
+            OpenRegionSettings = ri.OpenRegionSettings;
+            EnvironmentSettings =  ri.EnvironmentSettings;
+            RegionTerrain = ri.RegionTerrain;
+            RegionArea = ri.RegionArea;
+
+        }
+
+        public void SaveRegionConfig(string fileName) 
+        {
+            SerializeObject(fileName, this);
+        }
+
+        #region Serialization
+        /// <summary>
+        /// Serializes a region definition.
+        /// </summary>
+        /// <param name="fileName">File name.</param>
+        /// <param name="obj">Object.</param>
+        static void SerializeObject(string fileName, object obj)
+        {
+            try
+            {
+                XmlSerializer xs = new XmlSerializer( typeof( RegionInfo ) );
+
+                using ( XmlTextWriter writer = new XmlTextWriter( fileName, Util.UTF8 ) )
+                {
+                    writer.Formatting = Formatting.Indented;
+                    xs.Serialize(writer, obj);
+                }
+            }
+            catch ( SystemException ex )
+            {
+                throw new ApplicationException( "Unexpected failure in RegionInfo serialization", ex );
+            }
+        }
+
+        /// <summary>
+        /// Deserializes the region definition from the supplied filename.
+        /// </summary>
+        /// <returns>The object.</returns>
+        /// <param name="fileName">File name.</param>
+        static object DeserializeObject( string fileName )
+        {
+            try
+            {
+                XmlSerializer xs = new XmlSerializer( typeof( RegionInfo ) );
+
+                using ( FileStream fs = new FileStream( fileName, FileMode.Open, FileAccess.Read ) )
+                {
+                    return xs.Deserialize(fs);
+                }
+            }
+            catch (SystemException ex)
+            {
+                throw new ApplicationException( "Unexpected failure in RegionInfo de-serialization", ex );
+            }
+        }
+
+        #endregion
     }
 }

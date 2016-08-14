@@ -26,7 +26,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using WhiteCore.Framework.SceneInfo;
 using OpenMetaverse;
 
@@ -34,8 +33,15 @@ namespace WhiteCore.Framework.Physics
 {
     public interface IMesher
     {
-        IMesh CreateMesh(String primName, PrimitiveBaseShape primShape, Vector3 size, float lod, bool isPhysical);
-        void RemoveMesh(ulong key);
+        IMesh CreateMesh(String primName, PrimitiveBaseShape primShape, Vector3 size, float lod, bool isPhysical, bool shouldCache);
+    }
+
+    public enum LevelOfDetail
+    {
+        High = 32,
+        Medium = 16,
+        Low = 8,
+        VeryLow = 4
     }
 
     public interface IMesh

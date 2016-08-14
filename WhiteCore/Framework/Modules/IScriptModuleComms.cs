@@ -25,6 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using OpenMetaverse;
 
 namespace WhiteCore.Framework.Modules
@@ -32,10 +33,10 @@ namespace WhiteCore.Framework.Modules
     public delegate void ScriptCommand(UUID script, string id, string module, string command, string k);
 
     /// <summary>
-    ///     Interface for communication between OpenSim modules and in-world scripts
+    ///     Interface for communication between modules and in-world scripts
     /// </summary>
-    /// See OpenSim.Region.ScriptEngine.Shared.Api.MOD_Api.modSendCommand() for information on receiving messages
-    /// from scripts in OpenSim modules.
+    /// See Region.ScriptEngine.Shared.Api.MOD_Api.modSendCommand() for information on receiving messages
+    /// from scripts in modules.
     public interface IScriptModuleComms
     {
         /// <summary>
@@ -56,4 +57,12 @@ namespace WhiteCore.Framework.Modules
         // For use ONLY by the script API
         void RaiseEvent(UUID script, string id, string module, string command, string key);
     }
+	
+	[AttributeUsage(AttributeTargets.Method)]
+    public class ScriptInvocationAttribute : Attribute
+    { }
+
+    [AttributeUsage(AttributeTargets.Field)]
+    public class ScriptConstantAttribute : Attribute
+    { }
 }

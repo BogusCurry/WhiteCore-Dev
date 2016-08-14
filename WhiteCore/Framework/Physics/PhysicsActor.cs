@@ -27,9 +27,9 @@
 
 using System;
 using System.Collections.Generic;
+using OpenMetaverse;
 using WhiteCore.Framework.SceneInfo;
 using WhiteCore.Framework.SceneInfo.Entities;
-using OpenMetaverse;
 
 namespace WhiteCore.Framework.Physics
 {
@@ -54,7 +54,7 @@ namespace WhiteCore.Framework.Physics
         // Raising the event on the object, so don't need to provide location..  further up the tree knows that info.
 
         public bool Cleared;
-        private Dictionary<uint, ContactPoint> m_objCollisionList = new Dictionary<uint, ContactPoint>();
+        Dictionary<uint, ContactPoint> m_objCollisionList = new Dictionary<uint, ContactPoint>();
 
         public CollisionEventUpdate()
         {
@@ -151,13 +151,14 @@ namespace WhiteCore.Framework.Physics
 
         public abstract Vector3 Size { get; set; }
         public virtual uint LocalID { get; set; }
+        public abstract bool Grabbed { set; }
         public virtual string Name { get; set; }
         public virtual UUID UUID { get; set; }
 
         public virtual void RequestPhysicsterseUpdate()
         {
             // Make a temporary copy of the event to avoid possibility of
-            // a race condition if the last subscriber unsubscribes
+            // a race condition if the last subscriber unsubscribe's
             // immediately after the null check and before the event is raised.
             RequestTerseUpdate handler = OnRequestTerseUpdate;
 
@@ -168,7 +169,7 @@ namespace WhiteCore.Framework.Physics
         public virtual void RaiseOutOfBounds(Vector3 pos)
         {
             // Make a temporary copy of the event to avoid possibility of
-            // a race condition if the last subscriber unsubscribes
+            // a race condition if the last subscriber unsubscribe's
             // immediately after the null check and before the event is raised.
             OutOfBounds handler = OnOutOfBounds;
 
@@ -215,7 +216,7 @@ namespace WhiteCore.Framework.Physics
         public abstract float Mass { get; }
         public abstract float CollisionScore { get; set; }
         public abstract Quaternion Orientation { get; set; }
-        public abstract int PhysicsActorType { get; }
+        public abstract int PhysicsActorType { get; set;}
         public abstract bool IsPhysical { get; set; }
         public abstract bool ThrottleUpdates { get; set; }
         public abstract bool IsColliding { get; set; }
@@ -231,7 +232,7 @@ namespace WhiteCore.Framework.Physics
         public abstract bool SubscribedEvents();
 
         public abstract bool SendCollisions();
-        public abstract void AddCollisionEvent(uint localID, ContactPoint contact);
+        public abstract void AddCollisionEvent(uint collidedWith, ContactPoint contact);
 
         public virtual void ForceSetVelocity(Vector3 velocity) { }
         public virtual void ForceSetRotVelocity(Vector3 velocity) { }
@@ -241,9 +242,9 @@ namespace WhiteCore.Framework.Physics
 
         #region Object Declares
 
-        public virtual void link(PhysicsActor obj) { }
-        public virtual void linkGroupToThis(PhysicsActor[] objs) { }
-        public virtual void delink() { }
+        public virtual void Link(PhysicsActor obj) { }
+        public virtual void LinkGroupToThis(PhysicsActor[] objs) { }
+        public virtual void Delink() { }
         public virtual bool LinkSetIsColliding { get; set; }
         public virtual void LockAngularMotion(Vector3 axis) { }
         public virtual void CrossingFailure() { }
@@ -267,6 +268,7 @@ namespace WhiteCore.Framework.Physics
         public virtual void SubscribeEvents(int ms) { }
         public virtual void UnSubscribeEvents() { }
         public virtual bool VolumeDetect { get; set; }
+        public abstract bool Kinematic { get; set; }
 
         public event BlankHandler OnPhysicalRepresentationChanged;
 
@@ -274,6 +276,13 @@ namespace WhiteCore.Framework.Physics
         {
             if (OnPhysicalRepresentationChanged != null)
                 OnPhysicalRepresentationChanged();
+        }
+
+        // Extendable interface for new, physics engine specific operations
+        public virtual object Extension(string pFunct, params object[] pParams)
+        {
+            // A NOP of the physics engine does not implement this feature
+            return null;
         }
 
         #endregion
@@ -310,7 +319,7 @@ namespace WhiteCore.Framework.Physics
         public virtual bool CheckForRegionCrossing()
         {
             // Make a temporary copy of the event to avoid possibility of
-            // a race condition if the last subscriber unsubscribes
+            // a race condition if the last subscriber unsubscribe's
             // immediately after the null check and before the event is raised.
             checkForRegionCrossing handler = OnCheckForRegionCrossing;
 
@@ -333,6 +342,11 @@ namespace WhiteCore.Framework.Physics
         public override uint LocalID
         {
             get { return 0; }
+            set { return; }
+        }
+
+        public override bool Grabbed
+        {
             set { return; }
         }
 
@@ -421,6 +435,7 @@ namespace WhiteCore.Framework.Physics
         public override int PhysicsActorType
         {
             get { return (int) ActorTypes.Ground; }
+            set { return; }
         }
 
         public override Vector3 RotationalVelocity
@@ -429,6 +444,11 @@ namespace WhiteCore.Framework.Physics
             set { return; }
         }
 
+        public override bool Kinematic {
+            get { return false; }
+            set { return; }
+        }
+           
         public override void CrossingFailure()
         {
         }
@@ -459,7 +479,7 @@ namespace WhiteCore.Framework.Physics
             return false;
         }
 
-        public override void AddCollisionEvent(uint CollidedWith, ContactPoint contact)
+        public override void AddCollisionEvent(uint collidedWith, ContactPoint contact)
         {
         }
     }
@@ -497,6 +517,11 @@ namespace WhiteCore.Framework.Physics
         public override uint LocalID
         {
             get { return 0; }
+            set { return; }
+        }
+
+        public override bool Grabbed
+        {
             set { return; }
         }
 
@@ -564,11 +589,18 @@ namespace WhiteCore.Framework.Physics
         public override int PhysicsActorType
         {
             get { return (int) ActorTypes.Unknown; }
+            set { return; }
+
         }
 
         public override Vector3 RotationalVelocity
         {
             get { return Vector3.Zero; }
+            set { return; }
+        }
+
+        public override bool Kinematic {
+            get { return false; }
             set { return; }
         }
 
@@ -586,7 +618,7 @@ namespace WhiteCore.Framework.Physics
             return false;
         }
 
-        public override void AddCollisionEvent(uint CollidedWith, ContactPoint contact)
+        public override void AddCollisionEvent(uint collidedWith, ContactPoint contact)
         {
         }
     }

@@ -27,10 +27,10 @@
 
 using System;
 using System.Collections.Generic;
-using WhiteCore.Framework.Modules;
-using WhiteCore.Framework.Services.ClassHelpers.Assets;
 using Nini.Config;
 using OpenMetaverse;
+using WhiteCore.Framework.Modules;
+using WhiteCore.Framework.Services.ClassHelpers.Assets;
 
 namespace WhiteCore.Framework.Services
 {
@@ -49,6 +49,14 @@ namespace WhiteCore.Framework.Services
         /// <param name="id"></param>
         /// <returns></returns>
         AssetBase Get(string id);
+
+        /// <summary>
+        ///     Get an asset synchronously.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="showWarnings"></param>
+        /// <returns></returns>
+        AssetBase Get(string id, bool showWarnings);
 
         /// <summary>
         ///     Get a mesh asset synchronously.
@@ -121,10 +129,11 @@ namespace WhiteCore.Framework.Services
     public interface IAssetDataPlugin : IWhiteCoreDataPlugin
     {
         AssetBase GetAsset(UUID uuid);
+        AssetBase GetAsset(UUID uuid, bool showWarnings);
         AssetBase GetMeta(UUID uuid);
         UUID Store(AssetBase asset);
         bool StoreAsset(AssetBase asset);
-        void UpdateContent(UUID id, byte[] asset, out UUID newID);
+        void UpdateContent(UUID id, byte[] assetData, out UUID newID);
         bool ExistsAsset(UUID uuid);
         bool Delete(UUID id);
         bool Delete(UUID id, bool ignoreFlags);

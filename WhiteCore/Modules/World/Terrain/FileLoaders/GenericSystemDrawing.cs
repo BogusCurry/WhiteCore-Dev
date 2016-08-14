@@ -25,7 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -40,7 +40,7 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
     ///     A virtual class designed to have methods overloaded,
     ///     this class provides an interface for a generic image
     ///     saving and loading mechanism, but does not specify the
-    ///     format. It should not be insubstantiated directly.
+    ///     format. It should not be unsubstantiated directly.
     /// </summary>
     public class GenericSystemDrawing : ITerrainLoader
     {
@@ -62,10 +62,10 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
         /// <returns>A terrain channel generated from the image.</returns>
         public virtual ITerrainChannel LoadFile(string filename, IScene scene)
         {
-            return LoadBitmap(new Bitmap(filename));
+            return LoadBitmap(new Bitmap(filename), scene);
         }
 
-        public ITerrainChannel LoadFile(string filename, int x, int y, int fileWidth, int fileHeight, int w, int h)
+        public ITerrainChannel LoadFile(string filename,  IScene scene, int x, int y, int fileWidth, int fileHeight, int w, int h)
         {
             // [[THEMAJOR]] Some work on tile loading..
             // terrain load-tile Tile.png 5 5 10000 10050
@@ -77,9 +77,9 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
             int xoffset = w*x;
             int yoffset = h*(fileHeight - y);
 
-            //MainConsole.Instance.DebugFormat(
-            //    "[TERRAIN]: Loading tile {0},{1} (offset {2},{3}) from tilemap size of {4},{5}",
-            //    x, y, xoffset, yoffset, fileWidth, fileHeight);
+            MainConsole.Instance.DebugFormat(
+                "[Terrain]: Loading tile {0},{1} (offset {2},{3}) from tile-map size of {4},{5}",
+                x, y, xoffset, yoffset, fileWidth, fileHeight);
 
             Rectangle tileRect = new Rectangle(xoffset, yoffset, w, h);
             PixelFormat format = tilemap.PixelFormat;
@@ -93,7 +93,7 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
                 // This error WILL appear if the number of Y tiles is too high because of how it works from the bottom up
                 // However, this still spits out ugly unreferenced object errors on the console
                 MainConsole.Instance.ErrorFormat(
-                    "[TERRAIN]: Couldn't load tile {0},{1} (from bitmap coordinates {2},{3}). Number of specified Y tiles may be too high: {4}",
+                    "[Terrain]: Couldn't load tile {0},{1} (from bitmap coordinates {2},{3}). Number of specified Y tiles may be too high: {4}",
                     x, y, xoffset, yoffset, e);
             }
             finally
@@ -102,12 +102,12 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
                 tilemap.Dispose();
             }
 
-            return LoadBitmap(cloneBitmap);
+            return LoadBitmap(cloneBitmap, scene);
         }
 
         public virtual ITerrainChannel LoadStream(Stream stream, IScene scene)
         {
-            return LoadBitmap(new Bitmap(stream));
+            return LoadBitmap(new Bitmap(stream), scene);
         }
 
         /// <summary>
@@ -118,8 +118,11 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
         public virtual void SaveFile(string filename, ITerrainChannel map)
         {
             Bitmap colours = CreateGrayscaleBitmapFromMap(map);
-
-            colours.Save(filename, ImageFormat.Png);
+            try {
+                colours.Save (filename, ImageFormat.Png);
+            } catch {
+            }
+            colours.Dispose ();
         }
 
         /// <summary>
@@ -130,15 +133,18 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
         public virtual void SaveStream(Stream stream, ITerrainChannel map)
         {
             Bitmap colours = CreateGrayscaleBitmapFromMap(map);
-
-            colours.Save(stream, ImageFormat.Png);
+            try {
+                colours.Save (stream, ImageFormat.Png);
+            } catch {
+            }
+            colours.Dispose ();
         }
 
         #endregion
 
-        protected virtual ITerrainChannel LoadBitmap(Bitmap bitmap)
+        protected virtual ITerrainChannel LoadBitmap(Bitmap bitmap, IScene scene)
         {
-            ITerrainChannel retval = new TerrainChannel(bitmap.Width, bitmap.Height, null);
+            ITerrainChannel retval = new TerrainChannel(bitmap.Width, bitmap.Height, scene);
 
 			int x;
 			int y;
@@ -146,11 +152,10 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
 			for (x = 0; x < bitmap.Width; x++)
             {
             	for (y = 0; y < bitmap.Height; y++)
-                {
-					retval[x, y] = bitmap.GetPixel(x, bitmap.Height - y - 1).GetBrightness()*128;
-                }
+                    retval[x, y] = bitmap.GetPixel(x, bitmap.Height - y - 1).GetBrightness()*128;
             }
 
+            bitmap.Dispose ();  // not needed anymore
             return retval;
         }
 
@@ -181,7 +186,7 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
             {
                 for (int x = 0; x < map.Width; x++)
                 {
-                    // 512 is the largest possible height before colours clamp
+                    // 512 is the largest possible height before colors clamp
                     int colorindex = (int) (Math.Max(Math.Min(1.0, map[x, y]/128.0), 0.0)*(pallete - 1));
 
                     // Handle error conditions
@@ -195,11 +200,11 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
         }
 
         /// <summary>
-        ///     Protected method, generates a coloured bitmap
+        ///     Protected method, generates a colored bitmap
         ///     image from a specified terrain channel.
         /// </summary>
         /// <param name="map">The terrain channel to export to bitmap</param>
-        /// <returns>A System.Drawing.Bitmap containing a coloured image</returns>
+        /// <returns>A System.Drawing.Bitmap containing a colored image</returns>
         protected static Bitmap CreateBitmapFromMap(ITerrainChannel map)
         {
             Bitmap gradientmapLd = new Bitmap("defaultstripe.png");
@@ -218,7 +223,7 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
             {
                 for (int x = 0; x < map.Width; x++)
                 {
-                    // 512 is the largest possible height before colours clamp
+                    // 512 is the largest possible height before colors clamp
                     int colorindex = (int) (Math.Max(Math.Min(1.0, map[x, y]/512.0), 0.0)*(pallete - 1));
 
                     // Handle error conditions
@@ -228,6 +233,8 @@ namespace WhiteCore.Modules.Terrain.FileLoaders
                         bmp.SetPixel(x, map.Height - y - 1, colours[colorindex]);
                 }
             }
+
+            gradientmapLd.Dispose ();
             return bmp;
         }
     }

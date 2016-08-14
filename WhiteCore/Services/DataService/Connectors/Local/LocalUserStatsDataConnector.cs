@@ -25,22 +25,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+using System.Collections.Generic;
+using Nini.Config;
+using OpenMetaverse;
+using OpenMetaverse.Messages.Linden;
 using WhiteCore.Framework.DatabaseInterfaces;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Utilities;
-using Nini.Config;
-using OpenMetaverse;
-using OpenMetaverse.Messages.Linden;
-using System.Collections.Generic;
 
 namespace WhiteCore.Services.DataService
 {
     public class LocalUserStatsDataConnector : IUserStatsDataConnector
     {
-        private IGenericData GD = null;
-        private const string m_realm = "statsdata";
+        IGenericData GD;
+        const string m_realm = "statsdata";
 
         public void Initialize(IGenericData GenericData, IConfigSource source, IRegistryCore simBase,
                                string defaultConnectionString)
@@ -54,10 +53,12 @@ namespace WhiteCore.Services.DataService
                     defaultConnectionString = source.Configs[Name].GetString("ConnectionString", defaultConnectionString);
 
                 if (GD != null)
-                    GD.ConnectToDatabase(defaultConnectionString, "Stats",
-                                         source.Configs["WhiteCoreConnectors"].GetBoolean("ValidateTables", true));
+                {
+                    GD.ConnectToDatabase (defaultConnectionString, "Stats",
+                        source.Configs ["WhiteCoreConnectors"].GetBoolean ("ValidateTables", true));
 
-                Framework.Utilities.DataManager.RegisterPlugin(Name, this);
+                    Framework.Utilities.DataManager.RegisterPlugin (Name, this);
+                }
             }
         }
 
@@ -144,7 +145,24 @@ namespace WhiteCore.Services.DataService
             GD.Delete(m_realm, null);
         }
 
-        private ViewerStatsMessage BuildSession(List<string> results, int start)
+        public Dictionary<string,int> ViewerUsage()
+        {
+            QueryFilter filter = new QueryFilter();
+            List<string> client_viewers = GD.Query(new string[1] {"client_version"}, m_realm, filter, null, null, null);
+            client_viewers.Sort ();
+
+            //List<string> client_viewers = Get ("client_version");
+            Dictionary<string, int> viewers = new Dictionary<string, int>();
+            foreach( var cli in client_viewers)
+                if (viewers.ContainsKey(cli))
+                    viewers[cli]++;
+                else
+                    viewers.Add (cli, 1);
+
+            return viewers;
+        }
+
+        ViewerStatsMessage BuildSession(List<string> results, int start)
         {
             ViewerStatsMessage message = new ViewerStatsMessage();
             for (int i = start; i < start + 33; i += 33)

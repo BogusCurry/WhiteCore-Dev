@@ -34,22 +34,20 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
 {
     public sealed class InventoryFolderImpl : InventoryFolderBase
     {
-        //private static readonly ILog MainConsole.Instance = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         public static readonly string PATH_DELIMITER = "/";
 
         /// <summary>
         ///     Items that are contained in this folder
         /// </summary>
-        public Dictionary<UUID, InventoryItemBase> Items = new Dictionary<UUID, InventoryItemBase>();
+        public Dictionary<UUID, InventoryItemBase> Items = new Dictionary<UUID, InventoryItemBase> ();
 
         /// <summary>
         ///     Child folders that are contained in this folder
         /// </summary>
-        private Dictionary<UUID, InventoryFolderImpl> m_childFolders = new Dictionary<UUID, InventoryFolderImpl>();
+        Dictionary<UUID, InventoryFolderImpl> m_childFolders = new Dictionary<UUID, InventoryFolderImpl> ();
 
         // Constructors
-        public InventoryFolderImpl(InventoryFolderBase folderbase)
+        public InventoryFolderImpl (InventoryFolderBase folderbase)
         {
             Owner = folderbase.Owner;
             ID = folderbase.ID;
@@ -59,7 +57,7 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
             Version = folderbase.Version;
         }
 
-        public InventoryFolderImpl()
+        public InventoryFolderImpl ()
         {
         }
 
@@ -67,11 +65,14 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         ///     The total number of items in this folder and in the immediate child folders (though not from other
         ///     descendants).
         /// </value>
-        public int TotalCount
-        {
-            get
-            {
-                return m_childFolders.Values.Aggregate(Items.Count, (current, folder) => current + folder.TotalCount);
+        public int TotalCount {
+            get {
+                var itemCount = 0;
+                lock (Items)
+                    itemCount = Items.Count;
+
+                lock (m_childFolders)
+                    return m_childFolders.Values.Aggregate (itemCount, (current, folder) => current + folder.TotalCount);
             }
         }
 
@@ -82,21 +83,18 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// <param name="folderName"></param>
         /// <param name="type"></param>
         /// <returns>The newly created subfolder.  Returns null if the folder already exists</returns>
-        public InventoryFolderImpl CreateChildFolder(UUID folderID, string folderName, ushort type)
+        public InventoryFolderImpl CreateChildFolder (UUID folderID, string folderName, ushort type)
         {
-            lock (m_childFolders)
-            {
-                if (!m_childFolders.ContainsKey(folderID))
-                {
-                    InventoryFolderImpl subFold = new InventoryFolderImpl
-                                                      {
-                                                          Name = folderName,
-                                                          ID = folderID,
-                                                          Type = (short) type,
-                                                          ParentID = this.ID,
-                                                          Owner = Owner
-                                                      };
-                    m_childFolders.Add(subFold.ID, subFold);
+            lock (m_childFolders) {
+                if (!m_childFolders.ContainsKey (folderID)) {
+                    InventoryFolderImpl subFold = new InventoryFolderImpl {
+                        Name = folderName,
+                        ID = folderID,
+                        Type = (short)type,
+                        ParentID = ID,
+                        Owner = Owner
+                    };
+                    m_childFolders.Add (subFold.ID, subFold);
 
                     return subFold;
                 }
@@ -109,12 +107,11 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         ///     Add a folder that already exists.
         /// </summary>
         /// <param name="folder"></param>
-        public void AddChildFolder(InventoryFolderImpl folder)
+        public void AddChildFolder (InventoryFolderImpl folder)
         {
-            lock (m_childFolders)
-            {
+            lock (m_childFolders) {
                 folder.ParentID = ID;
-                m_childFolders[folder.ID] = folder;
+                m_childFolders [folder.ID] = folder;
             }
         }
 
@@ -123,9 +120,10 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// </summary>
         /// <param name="folderID"></param>
         /// <returns></returns>
-        public bool ContainsChildFolder(UUID folderID)
+        public bool ContainsChildFolder (UUID folderID)
         {
-            return m_childFolders.ContainsKey(folderID);
+            lock (m_childFolders)
+                return m_childFolders.ContainsKey (folderID);
         }
 
         /// <summary>
@@ -133,13 +131,12 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// </summary>
         /// <param name="folderID"></param>
         /// <returns>The folder if it exists, null if it doesn't</returns>
-        public InventoryFolderImpl GetChildFolder(UUID folderID)
+        public InventoryFolderImpl GetChildFolder (UUID folderID)
         {
             InventoryFolderImpl folder = null;
 
-            lock (m_childFolders)
-            {
-                m_childFolders.TryGetValue(folderID, out folder);
+            lock (m_childFolders) {
+                m_childFolders.TryGetValue (folderID, out folder);
             }
 
             return folder;
@@ -152,16 +149,14 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// <returns>
         ///     The folder removed, or null if the folder was not present.
         /// </returns>
-        public InventoryFolderImpl RemoveChildFolder(UUID folderID)
+        public InventoryFolderImpl RemoveChildFolder (UUID folderID)
         {
             InventoryFolderImpl removedFolder = null;
 
-            lock (m_childFolders)
-            {
-                if (m_childFolders.ContainsKey(folderID))
-                {
-                    removedFolder = m_childFolders[folderID];
-                    m_childFolders.Remove(folderID);
+            lock (m_childFolders) {
+                if (m_childFolders.ContainsKey (folderID)) {
+                    removedFolder = m_childFolders [folderID];
+                    m_childFolders.Remove (folderID);
                 }
             }
 
@@ -171,15 +166,17 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// <summary>
         ///     Delete all the folders and items in this folder.
         /// </summary>
-        public void Purge()
+        public void Purge ()
         {
-            foreach (InventoryFolderImpl folder in m_childFolders.Values)
-            {
-                folder.Purge();
+            lock (m_childFolders) {
+                foreach (InventoryFolderImpl folder in m_childFolders.Values) {
+                    folder.Purge ();
+                }
+                m_childFolders.Clear ();
             }
 
-            m_childFolders.Clear();
-            Items.Clear();
+            lock (Items)
+                Items.Clear ();
         }
 
         /// <summary>
@@ -187,22 +184,18 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// </summary>
         /// <param name="itemID"></param>
         /// <returns>null if the item is not found</returns>
-        public InventoryItemBase FindItem(UUID itemID)
+        public InventoryItemBase FindItem (UUID itemID)
         {
-            lock (Items)
-            {
-                if (Items.ContainsKey(itemID))
-                {
-                    return Items[itemID];
+            lock (Items) {
+                if (Items.ContainsKey (itemID)) {
+                    return Items [itemID];
                 }
             }
 
-            lock (m_childFolders)
-            {
+            lock (m_childFolders) {
                 foreach (
                     InventoryItemBase item in
-                        m_childFolders.Values.Select(folder => folder.FindItem(itemID)).Where(item => item != null))
-                {
+                        m_childFolders.Values.Select (folder => folder.FindItem (itemID)).Where (item => item != null)) {
                     return item;
                 }
             }
@@ -210,22 +203,18 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
             return null;
         }
 
-        public InventoryItemBase FindAsset(UUID assetID)
+        public InventoryItemBase FindAsset (UUID assetID)
         {
-            lock (Items)
-            {
-                foreach (InventoryItemBase item in Items.Values.Where(item => item.AssetID == assetID))
-                {
+            lock (Items) {
+                foreach (InventoryItemBase item in Items.Values.Where (item => item.AssetID == assetID)) {
                     return item;
                 }
             }
 
-            lock (m_childFolders)
-            {
+            lock (m_childFolders) {
                 foreach (
                     InventoryItemBase item in
-                        m_childFolders.Values.Select(folder => folder.FindAsset(assetID)).Where(item => item != null))
-                {
+                        m_childFolders.Values.Select (folder => folder.FindAsset (assetID)).Where (item => item != null)) {
                     return item;
                 }
             }
@@ -238,27 +227,22 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// </summary>
         /// <param name="itemID"></param>
         /// <returns></returns>
-        public bool DeleteItem(UUID itemID)
+        public bool DeleteItem (UUID itemID)
         {
             bool found = false;
 
-            lock (Items)
-            {
-                if (Items.ContainsKey(itemID))
-                {
-                    Items.Remove(itemID);
+            lock (Items) {
+                if (Items.ContainsKey (itemID)) {
+                    Items.Remove (itemID);
                     return true;
                 }
             }
 
-            lock (m_childFolders)
-            {
-                foreach (InventoryFolderImpl folder in m_childFolders.Values)
-                {
-                    found = folder.DeleteItem(itemID);
+            lock (m_childFolders) {
+                foreach (InventoryFolderImpl folder in m_childFolders.Values) {
+                    found = folder.DeleteItem (itemID);
 
-                    if (found)
-                    {
+                    if (found) {
                         break;
                     }
                 }
@@ -272,18 +256,16 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         ///     first.
         /// </summary>
         /// <returns>The requested folder if it exists, null if it does not.</returns>
-        public InventoryFolderImpl FindFolder(UUID folderID)
+        public InventoryFolderImpl FindFolder (UUID folderID)
         {
             if (folderID == ID)
                 return this;
 
-            lock (m_childFolders)
-            {
+            lock (m_childFolders) {
                 foreach (
                     InventoryFolderImpl returnFolder in
-                        m_childFolders.Values.Select(folder => folder.FindFolder(folderID))
-                                      .Where(returnFolder => returnFolder != null))
-                {
+                        m_childFolders.Values.Select (folder => folder.FindFolder (folderID))
+                                      .Where (returnFolder => returnFolder != null)) {
                     return returnFolder;
                 }
             }
@@ -292,16 +274,14 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         }
 
         /// <summary>
-        ///     Look through all child subfolders for a folder marked as one for a particular asset type, and return it.
+        ///     Look through all child subfolders for a folder marked as one for a particular folder type, and return it.
         /// </summary>
         /// <param name="type"></param>
         /// <returns>Returns null if no such folder is found</returns>
-        public InventoryFolderImpl FindFolderForType(int type)
+        public InventoryFolderImpl FindFolderForType (short type)
         {
-            lock (m_childFolders)
-            {
-                foreach (InventoryFolderImpl f in m_childFolders.Values.Where(f => f.Type == type))
-                {
+            lock (m_childFolders) {
+                foreach (InventoryFolderImpl f in m_childFolders.Values.Where (f => f.Type == type)) {
                     return f;
                 }
             }
@@ -312,38 +292,35 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// <summary>
         ///     Find a folder given a PATH_DELIMITER delimited path starting from this folder
         /// </summary>
-        /// This method does not handle paths that contain multiple delimitors
+        /// This method does not handle paths that contain multiple delimiters
         /// 
         /// FIXME: We do not yet handle situations where folders have the same name.  We could handle this by some
         /// XPath like expression
         /// 
-        /// FIXME: Delimitors which occur in names themselves are not currently escapable.
+        /// FIXME: Delimiters which occur in names themselves are not currently escapable.
         /// <param name="path">
         ///     The path to the required folder.
         ///     It this is empty or consists only of the PATH_DELIMTER then this folder itself is returned.
         /// </param>
         /// <returns>null if the folder is not found</returns>
-        public InventoryFolderImpl FindFolderByPath(string path)
+        public InventoryFolderImpl FindFolderByPath (string path)
         {
             if (path == string.Empty)
                 return this;
 
-            path = path.Trim();
+            path = path.Trim ();
 
             if (path == PATH_DELIMITER)
                 return this;
 
-            string[] components = path.Split(new[] {PATH_DELIMITER}, 2, StringSplitOptions.None);
+            string [] components = path.Split (new [] { PATH_DELIMITER }, 2, StringSplitOptions.None);
 
-            lock (m_childFolders)
-            {
+            lock (m_childFolders) {
                 foreach (
-                    InventoryFolderImpl folder in m_childFolders.Values.Where(folder => folder.Name == components[0]))
-                {
+                    InventoryFolderImpl folder in m_childFolders.Values.Where (folder => folder.Name == components [0])) {
                     if (components.Length > 1)
-                        return folder.FindFolderByPath(components[1]);
-                    else
-                        return folder;
+                        return folder.FindFolderByPath (components [1]);
+                    return folder;
                 }
             }
 
@@ -353,38 +330,31 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
 
         /// <summary>
         ///     Find an item given a PATH_DELIMITOR delimited path starting from this folder.
-        ///     This method does not handle paths that contain multiple delimitors
+        ///     This method does not handle paths that contain multiple delimiters
         ///     FIXME: We do not yet handle situations where folders or items have the same name.  We could handle this by some
         ///     XPath like expression
-        ///     FIXME: Delimitors which occur in names themselves are not currently escapable.
+        ///     FIXME: Delimiters which occur in names themselves are not currently escapable.
         /// </summary>
         /// <param name="path">
         ///     The path to the required item.
         /// </param>
         /// <returns>null if the item is not found</returns>
-        public InventoryItemBase FindItemByPath(string path)
+        public InventoryItemBase FindItemByPath (string path)
         {
-            string[] components = path.Split(new[] {PATH_DELIMITER}, 2, StringSplitOptions.None);
+            string [] components = path.Split (new [] { PATH_DELIMITER }, 2, StringSplitOptions.None);
 
-            if (components.Length == 1)
-            {
-                lock (Items)
-                {
-                    foreach (InventoryItemBase item in Items.Values.Where(item => item.Name == components[0]))
-                    {
+            if (components.Length == 1) {
+                lock (Items) {
+                    foreach (InventoryItemBase item in Items.Values.Where (item => item.Name == components [0])) {
                         return item;
                     }
                 }
-            }
-            else
-            {
-                lock (m_childFolders)
-                {
+            } else {
+                lock (m_childFolders) {
                     foreach (
                         InventoryFolderImpl folder in
-                            m_childFolders.Values.Where(folder => folder.Name == components[0]))
-                    {
-                        return folder.FindItemByPath(components[1]);
+                            m_childFolders.Values.Where (folder => folder.Name == components [0])) {
+                        return folder.FindItemByPath (components [1]);
                     }
                 }
             }
@@ -396,13 +366,12 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// <summary>
         ///     Return a copy of the list of child items in this folder.  The items themselves are the originals.
         /// </summary>
-        public List<InventoryItemBase> RequestListOfItems()
+        public List<InventoryItemBase> RequestListOfItems ()
         {
-            List<InventoryItemBase> itemList = new List<InventoryItemBase>();
+            List<InventoryItemBase> itemList = new List<InventoryItemBase> ();
 
-            lock (Items)
-            {
-                itemList.AddRange(Items.Values);
+            lock (Items) {
+                itemList.AddRange (Items.Values);
             }
 
             //MainConsole.Instance.DebugFormat("[INVENTORY FOLDER IMPL]: Found {0} items", itemList.Count);
@@ -413,25 +382,23 @@ namespace WhiteCore.Framework.Services.ClassHelpers.Inventory
         /// <summary>
         ///     Return a copy of the list of child folders in this folder.  The folders themselves are the originals.
         /// </summary>
-        public List<InventoryFolderBase> RequestListOfFolders()
+        public List<InventoryFolderBase> RequestListOfFolders ()
         {
-            List<InventoryFolderBase> folderList = new List<InventoryFolderBase>();
+            List<InventoryFolderBase> folderList = new List<InventoryFolderBase> ();
 
-            lock (m_childFolders)
-            {
-                folderList.AddRange(m_childFolders.Values.Cast<InventoryFolderBase>());
+            lock (m_childFolders) {
+                folderList.AddRange (m_childFolders.Values.Cast<InventoryFolderBase> ());
             }
 
             return folderList;
         }
 
-        public List<InventoryFolderImpl> RequestListOfFolderImpls()
+        public List<InventoryFolderImpl> RequestListOfFolderImpls ()
         {
-            List<InventoryFolderImpl> folderList = new List<InventoryFolderImpl>();
+            List<InventoryFolderImpl> folderList = new List<InventoryFolderImpl> ();
 
-            lock (m_childFolders)
-            {
-                folderList.AddRange(m_childFolders.Values);
+            lock (m_childFolders) {
+                folderList.AddRange (m_childFolders.Values);
             }
 
             return folderList;

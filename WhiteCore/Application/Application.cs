@@ -26,15 +26,11 @@
  */
 
 using WhiteCore.Simulation.Base;
-using System.Reflection;
-
-[assembly: AssemblyVersion("0.9.1")]
-[assembly: AssemblyFileVersion("0.9.1")]
 
 namespace WhiteCore
 {
     /// <summary>
-    ///     Starting class for the OpenSimulator Region
+    ///     Starting class for the WhiteCore Simulator
     /// </summary>
     public class Application
     {

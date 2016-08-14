@@ -25,17 +25,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Modules;
-using WhiteCore.Framework.Servers.HttpServer;
 using WhiteCore.Framework.Servers.HttpServer.Interfaces;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Utilities;
 using Nini.Config;
 using Nwc.XmlRpc;
 using OpenMetaverse;
-using OpenMetaverse.StructuredData;
 using System;
 using System.Collections;
 using System.Net;

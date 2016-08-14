@@ -25,11 +25,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+using Nini.Config;
 using WhiteCore.Framework.Configuration;
 using WhiteCore.Framework.Servers.HttpServer.Interfaces;
 using WhiteCore.Framework.Services.ClassHelpers.Other;
-using Nini.Config;
-using System;
 
 namespace WhiteCore.Framework.Modules
 {
@@ -59,6 +59,12 @@ namespace WhiteCore.Framework.Modules
         ///     The version string of WhiteCore
         /// </summary>
         string Version { get; }
+
+        /// <summary>
+        /// Is this instance a grid server.
+        /// </summary>
+        /// <value><c>true</c> if this instance is a grid server; otherwise, <c>false</c>.</value>
+        bool IsGridServer { get; }
 
         /// <summary>
         ///     All parameters that were passed by the command line when WhiteCore started
@@ -96,7 +102,7 @@ namespace WhiteCore.Framework.Modules
         ISimulationBase Copy();
 
         /// <summary>
-        ///     Start the base with the given parametsr
+        ///     Start the base with the given parameters
         /// </summary>
         /// <param name="originalConfigSource">The settings parsed from the command line</param>
         /// <param name="configSource">The .ini config</param>
@@ -114,5 +120,13 @@ namespace WhiteCore.Framework.Modules
         ///     Start console processing
         /// </summary>
         void Run();
+
+        // where all volatile data is kept
+        string DefaultDataPath { get; set; }
+
+        // The center of the world
+        int MapCenterX { get; set; }
+        int MapCenterY { get; set; }
+
     }
 }

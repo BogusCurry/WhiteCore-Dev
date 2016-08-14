@@ -25,36 +25,33 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
 using WhiteCore.Framework.Modules;
-using WhiteCore.Modules.Monitoring.Monitors;
 
 namespace WhiteCore.Modules.Monitoring.Alerts
 {
-    internal class DeadlockAlert : IAlert
+    class DeadlockAlert : IAlert
     {
-        private readonly ILastFrameTimeMonitor m_monitor;
+        readonly ILastFrameTimeMonitor m_monitor;
 
-        public DeadlockAlert(ILastFrameTimeMonitor m_monitor)
+        public DeadlockAlert (ILastFrameTimeMonitor m_monitor)
         {
             this.m_monitor = m_monitor;
         }
 
         #region Implementation of IAlert
 
-        public string GetName()
+        public string GetName ()
         {
             return "Potential Deadlock Alert";
         }
 
-        public void Test()
+        public void Test ()
         {
-            if (m_monitor.GetValue() > 60*1000)
-            {
-                if (OnTriggerAlert != null)
-                {
-                    OnTriggerAlert(typeof (DeadlockAlert),
-                                   (int) (m_monitor.GetValue()/1000) + " second(s) since last frame processed.", true);
+            if (m_monitor.GetValue () > 60 * 1000) {
+                if (OnTriggerAlert != null) {
+                    OnTriggerAlert (typeof (DeadlockAlert),
+                                   (int)(m_monitor.GetValue () / 1000) + " second(s) since last frame processed.", true);
                 }
             }
         }

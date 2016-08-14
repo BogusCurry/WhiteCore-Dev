@@ -27,8 +27,8 @@
 
 using System;
 using System.Collections.Generic;
-using WhiteCore.Framework.PresenceInfo;
 using OpenMetaverse;
+using WhiteCore.Framework.PresenceInfo;
 using WhiteCore.Framework.Services;
 
 namespace WhiteCore.Framework.Modules
@@ -66,10 +66,13 @@ namespace WhiteCore.Framework.Modules
         // Group Transactions
         GroupLiability 	= 6003,
         GroupDividend  	= 6004,
+        // Event Transactions
+        EventFee        = 9003,
+        EventPrize      = 9004,
         // Stipend Credits
         StipendPayment 	= 10000
     }
-
+            
     public class GroupBalance : IDataTransferable
     {
         public int TotalTierDebit = 0;
@@ -78,6 +81,7 @@ namespace WhiteCore.Framework.Modules
         public int LandFee = 0;
         public int ObjectFee = 0;
         public int GroupFee = 0;
+        public int Balance = 0;
         public DateTime StartingDate;
 
         public override void FromOSD(OpenMetaverse.StructuredData.OSDMap map)
@@ -88,6 +92,7 @@ namespace WhiteCore.Framework.Modules
             LandFee = map["LandFee"];
             ObjectFee = map["ObjectFee"];
             GroupFee = map["GroupFee"];
+            Balance = map["Balance"];
             StartingDate = map["StartingDate"];
         }
 
@@ -101,7 +106,103 @@ namespace WhiteCore.Framework.Modules
             map["LandFee"] = LandFee;
             map["ObjectFee"] = ObjectFee;
             map["GroupFee"] = GroupFee;
+            map["Balance"] = Balance;
             map["StartingDate"] = StartingDate;
+
+            return map;
+        }
+    }
+
+    public class AgentTransfer : IDataTransferable
+    {
+        public UUID ID;
+        public string Description = "";
+        public UUID FromAgent;
+        public string FromAgentName = "";
+        public UUID ToAgent;
+        public string ToAgentName = "";
+        public int Amount = 0;
+        public TransactionType TransferType = 0;
+        public DateTime TransferDate;
+        public int ToBalance = 0;
+        public int FromBalance = 0;
+        public string FromObjectName = "";
+        public string ToObjectName = "";
+        public string RegionName = "";
+
+        public override void FromOSD(OpenMetaverse.StructuredData.OSDMap map)
+        {
+            ID = map ["ID"];
+            Description = map ["Description"];
+            FromAgent = map ["FromAgent"];
+            FromAgentName = map ["FromAgentName"];
+            ToAgent = map ["ToAgent"];
+            ToAgentName = map ["ToAgentName"];
+            Amount = map ["Amount"];
+            TransferType = (TransactionType)Int32.Parse (map ["TransferType"]);
+            TransferDate = map ["TransferDate"];
+            ToBalance = map ["ToBalance"];
+            FromBalance = map ["FromBalance"];
+            FromObjectName = map ["FromObjectName"];
+            ToObjectName = map ["ToObjectName"];
+            RegionName = map ["RegionName"];
+
+        }
+
+        public override OpenMetaverse.StructuredData.OSDMap ToOSD()
+        {
+            OpenMetaverse.StructuredData.OSDMap map = new OpenMetaverse.StructuredData.OSDMap();
+
+            map["ID"] = ID;
+            map["Description"] = Description;
+            map["FromAgent"] = FromAgent;
+            map["FromAgentName"] = FromAgentName;
+            map["ToAgent"] = ToAgent;
+            map["ToAgentName"] = ToAgentName;
+            map["Amount"] = Amount;
+            map["TransferType"] = TransferType.ToString();
+            map["TransferDate"] = TransferDate;
+            map["ToBalance"] = ToBalance;
+            map["FromObjectName"] = FromObjectName;
+            map["ToObjectName"] = ToObjectName;
+            map["RegionName"] = RegionName;
+
+            return map;
+        }
+    }
+
+    public class AgentPurchase : IDataTransferable
+    {
+        public UUID ID;
+        public UUID AgentID;
+        public string IP = "";
+        public int Amount = 0;
+        public int RealAmount = 0;
+        public DateTime PurchaseDate;
+        public DateTime UpdateDate;
+
+        public override void FromOSD(OpenMetaverse.StructuredData.OSDMap map)
+        {
+            ID = map["ID"];
+            AgentID = map["AgentID"];
+            IP = map["IP"];
+            Amount = map["Amount"];
+            RealAmount = map["RealAmount"];
+            PurchaseDate = map["PurchaseDate"];
+            UpdateDate = map["UpdateDate"];
+        }
+
+        public override OpenMetaverse.StructuredData.OSDMap ToOSD()
+        {
+            OpenMetaverse.StructuredData.OSDMap map = new OpenMetaverse.StructuredData.OSDMap();
+
+            map["ID"] = ID;
+            map["AgentID"] = AgentID;
+            map["IP"] = IP;
+            map["Amount"] = Amount;
+            map["RealAmount"] = RealAmount;
+            map["PurchaseDate"] = PurchaseDate;
+            map["UpdateDate"] = UpdateDate;
 
             return map;
         }
@@ -109,6 +210,9 @@ namespace WhiteCore.Framework.Modules
 
     public interface IMoneyModule
     {
+        string InWorldCurrencySymbol { get; }
+        bool IsLocal { get; }
+
         int UploadCharge { get; }
         int GroupCreationCharge { get; }
         int DirectoryFeeCharge { get; }
@@ -117,7 +221,7 @@ namespace WhiteCore.Framework.Modules
         bool ObjectGiveMoney(UUID objectID, string objectName, UUID fromID, UUID toID, int amount);
 
         int Balance(UUID agentID);
-        bool Charge(UUID agentID, int amount, string text, TransactionType type);
+        bool Charge(UUID agentID, int amount, string description, TransactionType type);
 
         event ObjectPaid OnObjectPaid;
 
@@ -126,16 +230,56 @@ namespace WhiteCore.Framework.Modules
         bool Transfer(UUID toID, UUID fromID, UUID toObjectID, string toObjectName, UUID fromObjectID, string fromObjectName, int amount, string description,
                       TransactionType type);
 
+                   
+
+        uint NumberOfTransactions(UUID toAgent, UUID fromAgent);
+
+        List<AgentTransfer> GetTransactionHistory (UUID toAgentID, UUID fromAgentID, DateTime dateStart, DateTime dateEnd, uint? start, uint? count);
+        List<AgentTransfer> GetTransactionHistory (UUID toAgentID, UUID fromAgentID, int period, string periodType);
+        List<AgentTransfer> GetTransactionHistory (UUID toAgentID, int period, string periodType);
+        List<AgentTransfer> GetTransactionHistory (DateTime dateStart, DateTime dateEnd, uint? start, uint? count);
+        List<AgentTransfer> GetTransactionHistory (int period, string periodType, uint? start, uint? count);
+
+        uint NumberOfPurchases(UUID UserID);
+
+        List<AgentPurchase> GetPurchaseHistory (UUID UserID, DateTime dateStart, DateTime dateEnd, uint? start, uint? count);
+        List<AgentPurchase> GetPurchaseHistory (UUID toAgentID, int period, string periodType);
+        List<AgentPurchase> GetPurchaseHistory (DateTime dateStart, DateTime dateEnd, uint? start, uint? count);
+        List<AgentPurchase> GetPurchaseHistory (int period, string periodType, uint? start, uint? count);
+
         /// <summary>
-        ///     Get a list of transactions that have occured over the given interval (0 is this period of interval days, positive #s go back previous sets)
+        ///     Get a list of transactions that have occurred over the given interval (0 is this period of interval days, positive #s go back previous sets)
         /// </summary>
         /// <param name="groupID"></param>
         /// <param name="agentID">Requesting agentID (must be checked whether they can call this)</param>
         /// <param name="currentInterval"></param>
         /// <param name="intervalDays"></param>
-        List<GroupAccountHistory> GetTransactions(UUID groupID, UUID agentID, int currentInterval, int intervalDays);
+        List<GroupAccountHistory> GetGroupTransactions(UUID groupID, UUID agentID, int currentInterval, int intervalDays);
 
+        /// <summary>
+        /// Gets the group balance.
+        /// </summary>
+        /// <returns>The group balance.</returns>
+        /// <param name="groupID">Group UUID.</param>
         GroupBalance GetGroupBalance(UUID groupID);
+
+        /// <summary>
+        /// Processes  group currency transfer.
+        /// </summary>
+        /// <returns><c>true</c>, if gurrency transfer was grouped, <c>false</c> otherwise.</returns>
+        /// <param name="groupID">Group ID.</param>
+        /// <param name="userID">User ID.</param>
+        /// <param name="payUser">Payment is from the group.</param>
+        /// <param name="toObjectName">To object name.</param>
+        /// <param name="fromObjectID">From object ID.</param>
+        /// <param name="fromObjectName">From object name.</param>
+        /// <param name="amount">Amount.</param>
+        /// <param name="description">Description.</param>
+        /// <param name="type">Type.</param>
+        /// <param name="transactionID">Transaction ID.</param>
+        bool GroupCurrencyTransfer (UUID groupID, UUID userID, bool payUser, string toObjectName, UUID fromObjectID,
+            string fromObjectName, int amount, string description, TransactionType type, UUID transactionID);
+
     }
 
     public delegate void UserDidNotPay(UUID agentID, string identifier, string paymentTextThatFailed);
@@ -144,13 +288,21 @@ namespace WhiteCore.Framework.Modules
 
     public interface IScheduledMoneyModule
     {
+        // duplicate these to save getting from the money module
+        int UploadCharge { get; }
+        int GroupCreationCharge { get; }
+        int DirectoryFeeCharge { get; }
+
         event UserDidNotPay OnUserDidNotPay;
         event CheckWhetherUserShouldPay OnCheckWhetherUserShouldPay;
-        bool Charge(UUID agentID, int amount, string text, int daysUntilNextCharge, TransactionType type, string identifier, bool chargeImmediately);
-        void RemoveFromScheduledCharge(string identifer);
+        bool Charge(UUID agentID, int amount, string description, TransactionType transType, string identifier, bool chargeImmediately, bool runOnce);
+        void RemoveFromScheduledCharge(string identifier);
+        void RemoveDirFeeScheduledCharge(string identifier);
+        DateTime GetStipendPaytime (int minsOffset);
+
     }
 
-    public interface ISimpleCurrencyConnector : IWhiteCoreDataPlugin
+    public interface IBaseCurrencyConnector : IWhiteCoreDataPlugin
     {
         /*SimpleCurrencyConfig GetConfig();
         UserCurrency GetUserCurrency(UUID agentId);
@@ -158,6 +310,7 @@ namespace WhiteCore.Framework.Modules
         GroupBalance GetGroupBalance(UUID groupID);
 
         bool UserCurrencyTransfer(UUID toID, UUID fromID, UUID toObjectID, UUID fromObjectID, uint amount,
-                                  string description, TransactionType type, UUID transactionID);*/
+                                  string description, TransactionType type, UUID transactionID);
+        */                          
     }
 }

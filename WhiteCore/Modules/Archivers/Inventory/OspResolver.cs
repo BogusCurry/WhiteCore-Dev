@@ -25,7 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework;
+
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.Services;
 using OpenMetaverse;
@@ -143,7 +143,7 @@ namespace WhiteCore.Modules.Archivers
 
             if (nameSeparatorIndex < 0)
             {
-                MainConsole.Instance.WarnFormat("[OSP RESOLVER]: Ignoring unseparated name {0}", name);
+                MainConsole.Instance.WarnFormat("[OSP RESOLVER]: Ignoring un-separated name {0}", name);
                 return UUID.Zero;
             }
 

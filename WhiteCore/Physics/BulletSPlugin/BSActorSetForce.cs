@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright (c) Contributors, http://opensimulator.org/
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://aurora-sim.org/, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -9,7 +9,7 @@
  *     * Redistributions in binary form must reproduce the above copyrightD
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the OpenSimulator Project nor the
+ *     * Neither the name of the WhiteCore-Sim Project nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
@@ -25,14 +25,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 using OMV = OpenMetaverse;
 
-namespace OpenSim.Region.Physics.BulletSPlugin
+namespace WhiteCore.Physics.BulletSPlugin
 {
     public class BSActorSetForce : BSActor
     {
@@ -56,6 +51,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         public override void Dispose()
         {
             Enabled = false;
+        DeactivateSetForce();
         }
 
         // Called when physical parameters (properties set in Bullet) need to be re-applied.
@@ -68,7 +64,8 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             // If not active any more, get rid of me (shouldn't ever happen, but just to be safe)
             if (m_controllingPrim.RawForce == OMV.Vector3.Zero)
             {
-                m_physicsScene.DetailLog("{0},BSActorSetForce,refresh,notSetForce,removing={1}", m_controllingPrim.LocalID, ActorName);
+                m_physicsScene.DetailLog("{0},BSActorSetForce,refresh,notSetForce,removing={1}",
+                    m_controllingPrim.LocalID, ActorName);
                 Enabled = false;
                 return;
             }
@@ -94,7 +91,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         }
 
         // If a hover motor has not been created, create one and start the hovering.
-        private void ActivateSetForce()
+        void ActivateSetForce()
         {
             if (m_forceMotor == null)
             {
@@ -105,7 +102,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             }
         }
 
-        private void DeactivateSetForce()
+        void DeactivateSetForce()
         {
             if (m_forceMotor != null)
             {
@@ -115,13 +112,14 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         }
 
         // Called just before the simulation step. Update the vertical position for hoverness.
-        private void Mover(float timeStep)
+        void Mover(float timeStep)
         {
             // Don't do force while the object is selected.
             if (!isActive)
                 return;
 
-            m_physicsScene.DetailLog("{0},BSActorSetForce,preStep,force={1}", m_controllingPrim.LocalID, m_controllingPrim.RawForce);
+            m_physicsScene.DetailLog("{0},BSActorSetForce,preStep,force={1}", m_controllingPrim.LocalID,
+                m_controllingPrim.RawForce);
             if (m_controllingPrim.PhysBody.HasPhysicalBody)
             {
                 m_physicsScene.PE.ApplyCentralForce(m_controllingPrim.PhysBody, m_controllingPrim.RawForce);
@@ -132,4 +130,3 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         }
     }
 }
-

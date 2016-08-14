@@ -26,8 +26,8 @@
  */
 
 using System.Drawing;
-using WhiteCore.Framework.PresenceInfo;
 using OpenMetaverse;
+using WhiteCore.Framework.PresenceInfo;
 
 namespace WhiteCore.Framework.Modules
 {
@@ -85,6 +85,11 @@ namespace WhiteCore.Framework.Modules
         void CreateMapTile(out Bitmap terrainBMP, out Bitmap mapBMP);
         void CreateMapTile(out byte[] terrain, out byte[] map);
 
-        Bitmap CreateViewImage(Vector3 pos, Vector3 rot, float fov, int width, int height, bool usetex);
+        Bitmap CreateViewImage(Vector3 pos, Vector3 camDir, float fov, int width, int height, bool usetex);
+        Bitmap CreateViewTileImage (int size);
+
+        void UpdateWorldMaps ();
+
+
     }
 }

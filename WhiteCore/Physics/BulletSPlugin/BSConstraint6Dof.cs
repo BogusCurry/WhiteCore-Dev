@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright (c) Contributors, http://opensimulator.org/
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://aurora-sim.org/, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -9,7 +9,7 @@
  *     * Redistributions in binary form must reproduce the above copyrightD
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the OpenSimulator Project nor the
+ *     * Neither the name of the WhiteCore-Sim Project nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
@@ -24,144 +24,159 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-using System;
-using System.Collections.Generic;
-using System.Text;
+
 using OpenMetaverse;
 
-namespace OpenSim.Region.Physics.BulletSPlugin
+namespace WhiteCore.Physics.BulletSPlugin
 {
-
-public sealed class BSConstraint6Dof : BSConstraint
-{
-    private static string LogHeader = "[BULLETSIM 6DOF CONSTRAINT]";
-
-    public override ConstraintType Type { get { return ConstraintType.D6_CONSTRAINT_TYPE; } }
-
-    // Create a btGeneric6DofConstraint
-    public BSConstraint6Dof(BulletWorld world, BulletBody obj1, BulletBody obj2,
-                    Vector3 frame1, Quaternion frame1rot,
-                    Vector3 frame2, Quaternion frame2rot,
-                    bool useLinearReferenceFrameA, bool disableCollisionsBetweenLinkedBodies)
-        : base(world)
+    public class BSConstraint6Dof : BSConstraint
     {
-        m_body1 = obj1;
-        m_body2 = obj2;
-        m_constraint = PhysicsScene.PE.Create6DofConstraint(m_world, m_body1, m_body2,
-                                frame1, frame1rot,
-                                frame2, frame2rot,
-                                useLinearReferenceFrameA, disableCollisionsBetweenLinkedBodies);
-        m_enabled = true;
-        world.physicsScene.DetailLog("{0},BS6DofConstraint,createFrame,wID={1}, rID={2}, rBody={3}, cID={4}, cBody={5}",
-                            BSScene.DetailLogZero, world.worldID,
-                            obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
-    }
+        static string LogHeader = "[BULLETSIM 6DOF CONSTRAINT]";
 
-    // 6 Dof constraint based on a midpoint between the two constrained bodies
-    public BSConstraint6Dof(BulletWorld world, BulletBody obj1, BulletBody obj2,
-                    Vector3 joinPoint,
-                    bool useLinearReferenceFrameA, bool disableCollisionsBetweenLinkedBodies)
-        : base(world)
-    {
-        m_body1 = obj1;
-        m_body2 = obj2;
-        if (!obj1.HasPhysicalBody || !obj2.HasPhysicalBody)
+        public override ConstraintType Type
         {
-            world.physicsScene.DetailLog("{0},BS6DOFConstraint,badBodyPtr,wID={1}, rID={2}, rBody={3}, cID={4}, cBody={5}",
-                            BSScene.DetailLogZero, world.worldID,
-                            obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
-            world.physicsScene.Logger.ErrorFormat("{0} Attempt to build 6DOF constraint with missing bodies: wID={1}, rID={2}, rBody={3}, cID={4}, cBody={5}",
-                            LogHeader, world.worldID, obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
+            get { return ConstraintType.D6_CONSTRAINT_TYPE; }
+        }
+
+        public BSConstraint6Dof(BulletWorld world, BulletBody obj1, BulletBody obj2) :base(world)
+        {
+            m_body1 = obj1;
+            m_body2 = obj2;
             m_enabled = false;
         }
-        else
+
+        // Create a btGeneric6DofConstraint
+        public BSConstraint6Dof(BulletWorld world, BulletBody obj1, BulletBody obj2,
+            Vector3 frame1, Quaternion frame1rot,
+            Vector3 frame2, Quaternion frame2rot,
+            bool useLinearReferenceFrameA, bool disableCollisionsBetweenLinkedBodies)
+            : base(world)
         {
-            m_constraint = PhysicsScene.PE.Create6DofConstraintToPoint(m_world, m_body1, m_body2,
-                                    joinPoint,
-                                    useLinearReferenceFrameA, disableCollisionsBetweenLinkedBodies);
-            PhysicsScene.DetailLog("{0},BS6DofConstraint,createMidPoint,wID={1}, csrt={2}, rID={3}, rBody={4}, cID={5}, cBody={6}",
-                                BSScene.DetailLogZero, world.worldID, m_constraint.AddrString,
-                                obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
-            if (!m_constraint.HasPhysicalConstraint)
+            m_body1 = obj1;
+            m_body2 = obj2;
+            m_constraint = PhysicsScene.PE.Create6DofConstraint(m_world, m_body1, m_body2,
+                frame1, frame1rot,
+                frame2, frame2rot,
+                useLinearReferenceFrameA, disableCollisionsBetweenLinkedBodies);
+            m_enabled = true;
+            world.physicsScene.DetailLog(
+                "{0},BS6DofConstraint,createFrame,wID={1}, rID={2}, rBody={3}, cID={4}, cBody={5}",
+                BSScene.DetailLogZero, world.worldID,
+                obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
+        }
+
+        // 6 Dof constraint based on a midpoint between the two constrained bodies
+        public BSConstraint6Dof(BulletWorld world, BulletBody obj1, BulletBody obj2,
+            Vector3 joinPoint,
+            bool useLinearReferenceFrameA, bool disableCollisionsBetweenLinkedBodies)
+            : base(world)
+        {
+            m_body1 = obj1;
+            m_body2 = obj2;
+            if (!obj1.HasPhysicalBody || !obj2.HasPhysicalBody)
             {
-                world.physicsScene.Logger.ErrorFormat("{0} Failed creation of 6Dof constraint. rootID={1}, childID={2}",
-                                LogHeader, obj1.ID, obj2.ID);
+                world.physicsScene.DetailLog(
+                    "{0},BS6DOFConstraint,badBodyPtr,wID={1}, rID={2}, rBody={3}, cID={4}, cBody={5}",
+                    BSScene.DetailLogZero, world.worldID,
+                    obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
+                world.physicsScene.Logger.ErrorFormat(
+                    "{0} Attempt to build 6DOF constraint with missing bodies: wID={1}, rID={2}, rBody={3}, cID={4}, cBody={5}",
+                    LogHeader, world.worldID, obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
                 m_enabled = false;
             }
             else
             {
-                m_enabled = true;
+                m_constraint = PhysicsScene.PE.Create6DofConstraintToPoint(m_world, m_body1, m_body2,
+                    joinPoint,
+                    useLinearReferenceFrameA, disableCollisionsBetweenLinkedBodies);
+                PhysicsScene.DetailLog(
+                    "{0},BS6DofConstraint,createMidPoint,wID={1}, csrt={2}, rID={3}, rBody={4}, cID={5}, cBody={6}",
+                    BSScene.DetailLogZero, world.worldID, m_constraint.AddrString,
+                    obj1.ID, obj1.AddrString, obj2.ID, obj2.AddrString);
+                if (!m_constraint.HasPhysicalConstraint)
+                {
+                    world.physicsScene.Logger.ErrorFormat(
+                        "{0} Failed creation of 6Dof constraint. rootID={1}, childID={2}",
+                        LogHeader, obj1.ID, obj2.ID);
+                    m_enabled = false;
+                }
+                else
+                {
+                    m_enabled = true;
+                }
             }
         }
-    }
 
-    // A 6 Dof constraint that is fixed in the world and constrained to a on-the-fly created static object
-    public BSConstraint6Dof(BulletWorld world, BulletBody obj1, Vector3 frameInBloc, Quaternion frameInBrot,
-                    bool useLinearReferenceFrameB, bool disableCollisionsBetweenLinkedBodies)
-        : base(world)
-    {
-        m_body1 = obj1;
-        m_body2 = obj1; // Look out for confusion down the road
-        m_constraint = PhysicsScene.PE.Create6DofConstraintFixed(m_world, m_body1,
-                                frameInBloc, frameInBrot,
-                                useLinearReferenceFrameB, disableCollisionsBetweenLinkedBodies);
-        m_enabled = true;
-        world.physicsScene.DetailLog("{0},BS6DofConstraint,createFixed,wID={1},rID={2},rBody={3}",
-                            BSScene.DetailLogZero, world.worldID, obj1.ID, obj1.AddrString);
-    }
-
-    public bool SetFrames(Vector3 frameA, Quaternion frameArot, Vector3 frameB, Quaternion frameBrot)
-    {
-        bool ret = false;
-        if (m_enabled)
+        // A 6 Dof constraint that is fixed in the world and constrained to a on-the-fly created static object
+        public BSConstraint6Dof(BulletWorld world, BulletBody obj1, Vector3 frameInBloc, Quaternion frameInBrot,
+            bool useLinearReferenceFrameB, bool disableCollisionsBetweenLinkedBodies)
+            : base(world)
         {
-            PhysicsScene.PE.SetFrames(m_constraint, frameA, frameArot, frameB, frameBrot);
-            ret = true;
+            m_body1 = obj1;
+            m_body2 = obj1; // Look out for confusion down the road
+            m_constraint = PhysicsScene.PE.Create6DofConstraintFixed(m_world, m_body1,
+                frameInBloc, frameInBrot,
+                useLinearReferenceFrameB, disableCollisionsBetweenLinkedBodies);
+            m_enabled = true;
+            world.physicsScene.DetailLog("{0},BS6DofConstraint,createFixed,wID={1},rID={2},rBody={3}",
+                BSScene.DetailLogZero, world.worldID, obj1.ID, obj1.AddrString);
         }
-        return ret;
-    }
 
-    public bool SetCFMAndERP(float cfm, float erp)
-    {
-        bool ret = false;
-        if (m_enabled)
+        public bool SetFrames(Vector3 frameA, Quaternion frameArot, Vector3 frameB, Quaternion frameBrot)
         {
-            PhysicsScene.PE.SetConstraintParam(m_constraint, ConstraintParams.BT_CONSTRAINT_STOP_CFM, cfm, ConstraintParamAxis.AXIS_ALL);
-            PhysicsScene.PE.SetConstraintParam(m_constraint, ConstraintParams.BT_CONSTRAINT_STOP_ERP, erp, ConstraintParamAxis.AXIS_ALL);
-            PhysicsScene.PE.SetConstraintParam(m_constraint, ConstraintParams.BT_CONSTRAINT_CFM, cfm, ConstraintParamAxis.AXIS_ALL);
-            ret = true;
+            bool ret = false;
+            if (m_enabled)
+            {
+                PhysicsScene.PE.SetFrames(m_constraint, frameA, frameArot, frameB, frameBrot);
+                ret = true;
+            }
+            return ret;
         }
-        return ret;
-    }
 
-    public bool UseFrameOffset(bool useOffset)
-    {
-        bool ret = false;
-        float onOff = useOffset ? ConfigurationParameters.numericTrue : ConfigurationParameters.numericFalse;
-        if (m_enabled)
-            ret = PhysicsScene.PE.UseFrameOffset(m_constraint, onOff);
-        return ret;
-    }
-
-    public bool TranslationalLimitMotor(bool enable, float targetVelocity, float maxMotorForce)
-    {
-        bool ret = false;
-        float onOff = enable ? ConfigurationParameters.numericTrue : ConfigurationParameters.numericFalse;
-        if (m_enabled)
+        public bool SetCFMAndERP(float cfm, float erp)
         {
-            ret = PhysicsScene.PE.TranslationalLimitMotor(m_constraint, onOff, targetVelocity, maxMotorForce);
-            m_world.physicsScene.DetailLog("{0},BS6DOFConstraint,TransLimitMotor,enable={1},vel={2},maxForce={3}",
-                            BSScene.DetailLogZero, enable, targetVelocity, maxMotorForce);
+            bool ret = false;
+            if (m_enabled)
+            {
+                PhysicsScene.PE.SetConstraintParam(m_constraint, ConstraintParams.BT_CONSTRAINT_STOP_CFM, cfm,
+                    ConstraintParamAxis.AXIS_ALL);
+                PhysicsScene.PE.SetConstraintParam(m_constraint, ConstraintParams.BT_CONSTRAINT_STOP_ERP, erp,
+                    ConstraintParamAxis.AXIS_ALL);
+                PhysicsScene.PE.SetConstraintParam(m_constraint, ConstraintParams.BT_CONSTRAINT_CFM, cfm,
+                    ConstraintParamAxis.AXIS_ALL);
+                ret = true;
+            }
+            return ret;
         }
-        return ret;
-    }
 
-    public bool SetBreakingImpulseThreshold(float threshold)
-    {
-        bool ret = false;
-        if (m_enabled)
-            ret = PhysicsScene.PE.SetBreakingImpulseThreshold(m_constraint, threshold);
-        return ret;
+        public bool UseFrameOffset(bool useOffset)
+        {
+            bool ret = false;
+            float onOff = useOffset ? ConfigurationParameters.numericTrue : ConfigurationParameters.numericFalse;
+            if (m_enabled)
+                ret = PhysicsScene.PE.UseFrameOffset(m_constraint, onOff);
+            return ret;
+        }
+
+        public bool TranslationalLimitMotor(bool enable, float targetVelocity, float maxMotorForce)
+        {
+            bool ret = false;
+            float onOff = enable ? ConfigurationParameters.numericTrue : ConfigurationParameters.numericFalse;
+            if (m_enabled)
+            {
+                ret = PhysicsScene.PE.TranslationalLimitMotor(m_constraint, onOff, targetVelocity, maxMotorForce);
+                m_world.physicsScene.DetailLog("{0},BS6DOFConstraint,TransLimitMotor,enable={1},vel={2},maxForce={3}",
+                    BSScene.DetailLogZero, enable, targetVelocity, maxMotorForce);
+            }
+            return ret;
+        }
+
+        public bool SetBreakingImpulseThreshold(float threshold)
+        {
+            bool ret = false;
+            if (m_enabled)
+                ret = PhysicsScene.PE.SetBreakingImpulseThreshold(m_constraint, threshold);
+            return ret;
+        }
     }
-}
 }

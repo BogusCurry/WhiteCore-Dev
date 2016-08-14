@@ -25,10 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using WhiteCore.Framework.ClientInterfaces;
 using OpenMetaverse;
 using OpenMetaverse.Packets;
-using WhiteCore.Framework;
+using WhiteCore.Framework.ClientInterfaces;
+
 
 namespace WhiteCore.ClientStack
 {

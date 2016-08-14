@@ -1,4 +1,35 @@
-﻿using WhiteCore.Framework.ClientInterfaces;
+﻿/*
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://aurora-sim.org
+ * See CONTRIBUTORS.TXT for a full list of copyright holders.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the WhiteCore-Sim Project nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+using System;
+using System.Collections.Generic;
+using OpenMetaverse;
+using OpenMetaverse.StructuredData;
+using WhiteCore.Framework.ClientInterfaces;
 using WhiteCore.Framework.ConsoleFramework;
 using WhiteCore.Framework.PresenceInfo;
 using WhiteCore.Framework.SceneInfo.Entities;
@@ -6,10 +37,6 @@ using WhiteCore.Framework.Servers;
 using WhiteCore.Framework.Servers.HttpServer.Interfaces;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Utilities;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
-using System;
-using System.Collections.Generic;
 using GridRegion = WhiteCore.Framework.Services.GridRegion;
 
 namespace WhiteCore.Framework.SceneInfo
@@ -26,7 +53,7 @@ namespace WhiteCore.Framework.SceneInfo
         public delegate void OnNewClientDelegate(IClientAPI client);
 
         /// <summary>
-        ///     Deprecated in favour of OnClientConnect.
+        ///     Deprecated in favor of OnClientConnect.
         ///     Will be marked Obsolete after IClientCore has 100% of IClientAPI interfaces.
         /// </summary>
         public event OnNewClientDelegate OnNewClient;
@@ -114,6 +141,10 @@ namespace WhiteCore.Framework.SceneInfo
 
         public event SignificantClientMovement OnClientMovement;
 
+        public delegate void OnTerrainTickDelegate();
+
+        public event OnTerrainTickDelegate OnTerrainTick;
+
         public delegate void SignificantObjectMovement(ISceneEntity group);
 
         public event SignificantObjectMovement OnSignificantObjectMovement;
@@ -195,6 +226,7 @@ namespace WhiteCore.Framework.SceneInfo
 
         public event FinishedStartup OnModuleFinishedStartup;
         public event AddToStartupQueue OnAddToStartupQueue;
+
         public event StartupComplete OnStartupComplete;
         //This is called after OnStartupComplete is done, it should ONLY be registered to the Scene
         public event StartupComplete OnStartupFullyComplete;
@@ -267,7 +299,7 @@ namespace WhiteCore.Framework.SceneInfo
         /// <summary>
         ///     Called when an oar file has finished saving
         ///     Message is non empty string if there were problems saving the oar file
-        ///     If a guid was supplied on the original call to identify, the request, this is returned.  Otherwise
+        ///     If a GUID was supplied on the original call to identify, the request, this is returned.  Otherwise
         ///     Guid.Empty is returned.
         /// </summary>
         public delegate void OarFileSaved(Guid guid, string message);
@@ -1742,5 +1774,28 @@ namespace WhiteCore.Framework.SceneInfo
                 }
             }
         }
+        
+        public void TriggerTerrainTick()
+        {
+            OnTerrainTickDelegate handlerTerrainTick = OnTerrainTick;
+            if (handlerTerrainTick != null)
+            {
+                foreach (OnTerrainTickDelegate d in handlerTerrainTick.GetInvocationList())
+                {
+                    try
+                    {
+                        d();
+                    }
+                    catch (Exception e)
+                    {
+                        MainConsole.Instance.ErrorFormat(
+                            "[EVENT MANAGER]: Delegate for TriggerTerrainTick failed - continuing.  {0} {1}",
+                            e.Message, e.StackTrace);
+                    }
+                }
+            }
+        }
+
+
     }
 }

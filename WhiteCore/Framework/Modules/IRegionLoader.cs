@@ -52,11 +52,11 @@ namespace WhiteCore.Framework.Modules
         bool Default { get; }
 
         /// <summary>
-        ///     Starts up the module and loads configs
+        ///     Starts up the module and loads configuration
         /// </summary>
         /// <param name="configSource"></param>
-        /// <param name="openSim"></param>
-        void Initialise(IConfigSource configSource, ISimulationBase openSim);
+        /// <param name="simBase"></param>
+        void Initialise(IConfigSource configSource, ISimulationBase simBase);
 
         /// <summary>
         ///     Loads the region from all enabled plugins
@@ -65,7 +65,7 @@ namespace WhiteCore.Framework.Modules
         RegionInfo LoadRegion();
 
         /// <summary>
-        ///     This updates a Regions info given by the param 'oldName' to the new region info given
+        ///     This updates a Regions info given by the parameter 'oldName' to the new region info given
         /// </summary>
         /// <param name="oldName"></param>
         /// <param name="regionInfo"></param>

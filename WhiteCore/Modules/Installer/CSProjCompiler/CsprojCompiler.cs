@@ -16,12 +16,12 @@ namespace RunTimeCompiler
     /// <summary>
     ///     Compiles a csproj.
     ///     I should probably define an interface and access the functionality available here
-    ///     via ProjectReader or a similair class.
+    ///     via ProjectReader or a similar class.
     /// </summary>
     internal class CsprojCompiler
     {
         /// <summary>
-        ///     This method compiles the poroject specified as parameter.
+        ///     This method compiles the project specified as parameter.
         ///     It can only be used for CSharp projects, but can be modified to support
         ///     some other .Net project types.
         /// </summary>
@@ -86,7 +86,7 @@ namespace RunTimeCompiler
         /// <returns></returns>
         private string[] GetReferences(BasicProject project)
         {
-            //TODO: Correct this code as the name of the file is not guaranted to be +".dll"!
+            //TODO: Correct this code as the name of the file is not guaranteed to be +".dll"!
             string[] resources = new string[project.References.Count];
             for (int i = 0; i < project.References.Count; i++)
             {
@@ -115,7 +115,7 @@ namespace RunTimeCompiler
         }
 
         /// <summary>
-        ///     This method is used to get the compiler oprions to be specified
+        ///     This method is used to get the compiler options to be specified
         ///     in the CompilerParameters for a CodeDomProvider.
         ///     It determines the compiler options based on the settings from the csproj file.
         /// </summary>

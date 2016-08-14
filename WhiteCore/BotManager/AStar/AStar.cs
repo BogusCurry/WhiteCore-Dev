@@ -27,12 +27,11 @@
 
 using System;
 using System.Collections;
-using Tanis.Collections;
 
-namespace Games.Pathfinding
+namespace WhiteCore.BotManager.AStar
 {
     /// <summary>
-    ///     Base class for pathfinding nodes, it holds no actual information about the map.
+    ///     Base class for path finding nodes, it holds no actual information about the map.
     ///     An inherited class must be constructed from this class and all virtual methods must be
     ///     implemented. Note, that calling base() in the overridden methods is not needed.
     /// </summary>
@@ -40,8 +39,8 @@ namespace Games.Pathfinding
     {
         #region Properties
 
-        private double FGoalEstimate;
-        private AStarNode FGoalNode;
+        double FGoalEstimate;
+        AStarNode FGoalNode;
 
         /// <summary>
         ///     The parent of the node.
@@ -51,7 +50,7 @@ namespace Games.Pathfinding
         /// <summary>
         ///     The accumulative cost of the path until now.
         /// </summary>
-        public double Cost { set; get; }
+        public double Cost { get; set; }
 
         /// <summary>
         ///     The estimated cost to the goal from here.
@@ -94,14 +93,14 @@ namespace Games.Pathfinding
         /// <summary>
         ///     Constructor.
         /// </summary>
-        /// <param name="AParent">The node's parent</param>
-        /// <param name="AGoalNode">The goal node</param>
-        /// <param name="ACost">The accumulative cost until now</param>
-        public AStarNode(AStarNode AParent, AStarNode AGoalNode, double ACost)
+        /// <param name="aParent">The node's parent</param>
+        /// <param name="aGoalNode">The goal node</param>
+        /// <param name="aCost">The accumulative cost until now</param>
+        public AStarNode(AStarNode aParent, AStarNode aGoalNode, double aCost)
         {
-            Parent = AParent;
-            Cost = ACost;
-            GoalNode = AGoalNode;
+            Parent = aParent;
+            Cost = aCost;
+            GoalNode = aGoalNode;
         }
 
         #endregion
@@ -109,7 +108,7 @@ namespace Games.Pathfinding
         #region Public Methods
 
         /// <summary>
-        ///     Determines wheather the current node is the goal.
+        ///     Determines whether the current node is the goal.
         /// </summary>
         /// <returns>Returns true if current node is the goal</returns>
         public bool IsGoal()
@@ -122,11 +121,11 @@ namespace Games.Pathfinding
         #region Virtual Methods
 
         /// <summary>
-        ///     Determines wheather the current node is the same state as the on passed.
+        ///     Determines whether the current node is the same state as the on passed.
         /// </summary>
-        /// <param name="ANode">AStarNode to compare the current node to</param>
+        /// <param name="aNode">AStarNode to compare the current node to</param>
         /// <returns>Returns true if they are the same state</returns>
-        public virtual bool IsSameState(AStarNode ANode)
+        public virtual bool IsSameState(AStarNode aNode)
         {
             return false;
         }
@@ -142,8 +141,8 @@ namespace Games.Pathfinding
         /// <summary>
         ///     Gets all successors nodes from the current node and adds them to the successor list
         /// </summary>
-        /// <param name="ASuccessors">List in which the successors will be added</param>
-        public virtual void GetSuccessors(ArrayList ASuccessors)
+        /// <param name="aSuccessors">List in which the successors will be added</param>
+        public virtual void GetSuccessors(ArrayList aSuccessors)
         {
         }
 
@@ -174,35 +173,35 @@ namespace Games.Pathfinding
     }
 
     /// <summary>
-    ///     Class for performing A* pathfinding
+    ///     Class for performing A* path finding
     /// </summary>
     public sealed class AStar
     {
         #region Private Fields
 
-        private readonly Heap FClosedList;
-        private readonly Heap FOpenList;
-        private readonly ArrayList FSuccessors;
-        private AStarNode FGoalNode;
-        private AStarNode FStartNode;
+        readonly Heap FClosedList;
+        readonly Heap FOpenList;
+        readonly ArrayList FSuccessors;
+        AStarNode FGoalNode;
+        AStarNode FStartNode;
 
         #endregion
 
         #region Properties
 
-        private readonly ArrayList FSolution;
+        readonly ArrayList FSolution;
 
-        private bool m_pathPossible = true;
+        bool m_pathPossible = true;
 
         /// <summary>
-        ///     Holds the solution after pathfinding is done. <see>FindPath()</see>
+        ///     Holds the solution after path finding is done. <see>FindPath()</see>
         /// </summary>
         public ArrayList Solution
         {
             get { return FSolution; }
         }
 
-        public bool pathPossible
+        public bool PathPossible
         {
             get { return m_pathPossible; }
         }
@@ -226,11 +225,11 @@ namespace Games.Pathfinding
         /// <summary>
         ///     Prints all the nodes in a list
         /// </summary>
-        /// <param name="ANodeList">List to print</param>
-        private void PrintNodeList(object ANodeList)
+        /// <param name="aNodeList">List to print</param>
+        void PrintNodeList(object aNodeList)
         {
             Console.WriteLine("Node list:");
-            foreach (AStarNode n in (ANodeList as IEnumerable))
+            foreach (AStarNode n in (aNodeList as IEnumerable))
             {
                 //n.PrintNodeInfo();
             }
@@ -244,12 +243,12 @@ namespace Games.Pathfinding
         /// <summary>
         ///     Finds the shortest path from the start node to the goal node
         /// </summary>
-        /// <param name="AStartNode">Start node</param>
-        /// <param name="AGoalNode">Goal node</param>
-        public void FindPath(AStarNode AStartNode, AStarNode AGoalNode)
+        /// <param name="aStartNode">Start node</param>
+        /// <param name="aGoalNode">Goal node</param>
+        public void FindPath(AStarNode aStartNode, AStarNode aGoalNode)
         {
-            FStartNode = AStartNode;
-            FGoalNode = AGoalNode;
+            FStartNode = aStartNode;
+            FGoalNode = aGoalNode;
 
             FOpenList.Add(FStartNode);
             int i = 0;
@@ -273,7 +272,7 @@ namespace Games.Pathfinding
                 NodeCurrent.GetSuccessors(FSuccessors);
                 foreach (AStarNode NodeSuccessor in FSuccessors)
                 {
-                    // Test if the currect successor node is on the open list, if it is and
+                    // Test if the current successor node is on the open list, if it is and
                     // the TotalCost is higher, we will throw away the current successor.
                     AStarNode NodeOpen = null;
                     if (FOpenList.Contains(NodeSuccessor))
@@ -281,7 +280,7 @@ namespace Games.Pathfinding
                     if ((NodeOpen != null) && (NodeSuccessor.TotalCost > NodeOpen.TotalCost))
                         continue;
 
-                    // Test if the currect successor node is on the closed list, if it is and
+                    // Test if the current successor node is on the closed list, if it is and
                     // the TotalCost is higher, we will throw away the current successor.
                     AStarNode NodeClosed = null;
                     if (FClosedList.Contains(NodeSuccessor))

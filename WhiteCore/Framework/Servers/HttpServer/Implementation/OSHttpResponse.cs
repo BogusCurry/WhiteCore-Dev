@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Contributors, http://opensimulator.org/
+ * Copyright (c) Contributors, http://whitecore-sim.org/, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -9,7 +9,7 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the OpenSimulator Project nor the
+ *     * Neither the name of the WhiteCore-Sim Project nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
  *
@@ -25,14 +25,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.IO;
 using System.Net;
 using System.Text;
 
 namespace WhiteCore.Framework.Servers.HttpServer.Implementation
 {
     /// <summary>
-    ///     OSHttpResponse is the OpenSim representation of an HTTP
+    ///     OSHttpResponse is the WhiteCore representation of an HTTP
     ///     response.
     /// </summary>
     public class OSHttpResponse
@@ -69,7 +68,7 @@ namespace WhiteCore.Framework.Servers.HttpServer.Implementation
         }
 
         /// <summary>
-        ///     Set a redirct location.
+        ///     Set a redirect location.
         /// </summary>
         public string RedirectLocation
         {
@@ -122,19 +121,22 @@ namespace WhiteCore.Framework.Servers.HttpServer.Implementation
 
         public void AddCookie(System.Web.HttpCookie cookie)
         {
-            _httpResponse.Cookies.Add(new Cookie(cookie.Name, cookie.Value, cookie.Path, cookie.Domain)
-                                          {
-                                              Expires =
-                                                  cookie
-                                                  .Expires
-                                          });
+            try {
+                _httpResponse.Cookies.Add (new Cookie (cookie.Name, cookie.Value, cookie.Path, cookie.Domain) {
+                    Expires = cookie.Expires
+                });
+            } catch {
+            }
         }
 
         protected HttpListenerResponse _httpResponse;
 
         public OSHttpResponse(HttpListenerContext context)
         {
-            _httpResponse = context.Response;
+            try {
+                _httpResponse = context.Response;
+            }catch{
+            }
         }
 
         /// <summary>
@@ -150,7 +152,10 @@ namespace WhiteCore.Framework.Servers.HttpServer.Implementation
         /// </param>
         public void AddHeader(string key, string value)
         {
-            _httpResponse.AddHeader(key, value);
+            try {
+                _httpResponse.AddHeader (key, value);
+            } catch {
+            }
         }
     }
 }

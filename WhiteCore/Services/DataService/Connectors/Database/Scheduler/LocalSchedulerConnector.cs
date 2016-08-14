@@ -28,26 +28,25 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using WhiteCore.Framework;
+using Nini.Config;
+using OpenMetaverse;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Utilities;
-using Nini.Config;
-using OpenMetaverse;
 
 namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
 {
     public class LocalSchedulerConnector : ISchedulerDataPlugin
     {
-        private IGenericData m_Gd;
+        IGenericData GD;
 
-        private readonly string[] theFields = new[]
-                                                  {
-                                                      "id", "fire_function", "fire_params", "run_once", "run_every",
-                                                      "runs_next", "keep_history", "require_reciept", "last_history_id",
-                                                      "create_time", "start_time", "run_every_type", "enabled",
-                                                      "schedule_for"
-                                                  };
+        readonly string[] theFields = new[]
+        {
+            "id", "fire_function", "fire_params", "run_once", "run_every",
+            "runs_next", "keep_history", "require_reciept", "last_history_id",
+            "create_time", "start_time", "run_every_type", "enabled",
+            "schedule_for"
+        };
 
         #region Implementation of IWhiteCoreDataPlugin
 
@@ -63,23 +62,23 @@ namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
         /// <summary>
         ///     Starts the database plugin, performs migrations if needed
         /// </summary>
-        /// <param name="GenericData">The Database Plugin</param>
+        /// <param name="genericData">The Database Plugin</param>
         /// <param name="source">Config if more parameters are needed</param>
         /// <param name="simBase"></param>
-        /// <param name="DefaultConnectionString">The connection string to use</param>
-        public void Initialize(IGenericData GenericData, IConfigSource source, IRegistryCore simBase,
-                               string DefaultConnectionString)
+        /// <param name="defaultConnectionString">The connection string to use</param>
+        public void Initialize(IGenericData genericData, IConfigSource source, IRegistryCore simBase,
+                               string defaultConnectionString)
         {
             if (source.Configs["WhiteCoreConnectors"].GetString("SchedulerConnector", "LocalConnector") != "LocalConnector")
                 return;
 
             if (source.Configs[Name] != null)
-                DefaultConnectionString = source.Configs[Name].GetString("ConnectionString", DefaultConnectionString);
-            if (GenericData != null)
-                GenericData.ConnectToDatabase(DefaultConnectionString, "Scheduler",
+                defaultConnectionString = source.Configs[Name].GetString("ConnectionString", defaultConnectionString);
+            if (genericData != null)
+                genericData.ConnectToDatabase(defaultConnectionString, "Scheduler",
                                               source.Configs["WhiteCoreConnectors"].GetBoolean("ValidateTables", true));
 
-            m_Gd = GenericData;
+            GD = genericData;
             Framework.Utilities.DataManager.RegisterPlugin(this);
         }
 
@@ -87,54 +86,58 @@ namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
 
         #region Implementation of ISchedulerDataPlugin
 
-        public string SchedulerSave(SchedulerItem I)
+        public string SchedulerSave(SchedulerItem itm)
         {
-            object[] dbv = GetDBValues(I);
+            object[] dbv = GetDBValues(itm);
             Dictionary<string, object> values = new Dictionary<string, object>(dbv.Length);
             int i = 0;
-            foreach (object value in dbv)
-            {
+            foreach (object value in dbv) {
                 values[theFields[i++]] = value;
             }
-            if (SchedulerExist(I.id))
-            {
+            if (SchedulerExist(itm.id)) {
                 QueryFilter filter = new QueryFilter();
-                filter.andFilters["id"] = I.id;
+                filter.andFilters["id"] = itm.id;
 
-                m_Gd.Update("scheduler", values, null, filter, null, null);
+                GD.Update("scheduler", values, null, filter, null, null);
+            } else {
+                GD.Insert("scheduler", values);
             }
-            else
-            {
-                m_Gd.Insert("scheduler", values);
-            }
-            return I.id;
+
+            return itm.id;
         }
 
-        public void SchedulerRemove(string id)
+        public void SchedulerRemoveID(string id)
         {
             QueryFilter filter = new QueryFilter();
             filter.andFilters["id"] = id;
-            m_Gd.Delete("scheduler", filter);
+            GD.Delete("scheduler", filter);
         }
 
-        private object[] GetDBValues(SchedulerItem I)
+        public void SchedulerRemoveFunction(string identifier)
+        {
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["fire_function"] = identifier;
+            GD.Delete("scheduler", filter);
+        }
+
+        object[] GetDBValues(SchedulerItem itm)
         {
             return new object[]
                        {
-                           I.id,
-                           I.FireFunction,
-                           I.FireParams,
-                           I.RunOnce,
-                           I.RunEvery,
-                           I.TimeToRun,
-                           I.HisotryKeep,
-                           I.HistoryReciept,
-                           I.HistoryLastID,
-                           I.CreateTime,
-                           I.StartTime,
-                           (int) I.RunEveryType,
-                           I.Enabled,
-                           I.ScheduleFor
+                           itm.id,
+                           itm.FireFunction,
+                           itm.FireParams,
+                           itm.RunOnce,
+                           itm.RunEvery,
+                           itm.TimeToRun,         // "run_next" field in db
+                           itm.HistoryKeep,
+                           itm.HistoryReceipt,
+                           itm.HistoryLastID,
+                           itm.CreateTime,
+                           itm.StartTime,
+                           (int) itm.RunEveryType,
+                           itm.Enabled,
+                           itm.ScheduleFor
                        };
         }
 
@@ -142,58 +145,54 @@ namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
         {
             QueryFilter filter = new QueryFilter();
             filter.andFilters["id"] = id;
-            return m_Gd.Query(new string[] {"id"}, "scheduler", filter, null, null, null).Count >= 1;
+
+            return GD.Query(new string[] {"id"}, "scheduler", filter, null, null, null).Count >= 1;
         }
 
 
-        public List<SchedulerItem> ToRun()
+        public List<SchedulerItem> ToRun(DateTime timeToRun)
         {
             List<SchedulerItem> returnValue = new List<SchedulerItem>();
             DataReaderConnection dr = null;
-            try
-            {
-                dr =
-                    m_Gd.QueryData(
-                        "WHERE enabled = 1 AND runs_next < '" + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm") +
+            try {
+                dr = GD.QueryData( 
+                        // "WHERE enabled = 1 AND runs_next < '" + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm") +   // use local time for scheduling
+                        "WHERE enabled = 1 AND runs_next <='" + timeToRun.ToString("yyyy-MM-dd HH:mm") +
                         "' ORDER BY runs_next desc", "scheduler", string.Join(", ", theFields));
-                if (dr != null && dr.DataReader != null)
-                {
-                    while (dr.DataReader.Read())
-                    {
+                
+                if (dr != null && dr.DataReader != null) {
+                    while (dr.DataReader.Read()) {
                         returnValue.Add(LoadFromDataReader(dr.DataReader));
                     }
                 }
-            }
-            catch
-            {
-            }
-            finally
-            {
-                m_Gd.CloseDatabase(dr);
+            } catch{
+            } finally {
+                if (dr != null)
+                    GD.CloseDatabase(dr);
             }
 
             return returnValue;
         }
 
-        public SchedulerItem SaveHistory(SchedulerItem I)
+        public SchedulerItem SaveHistory(SchedulerItem itm)
         {
             string his_id = UUID.Random().ToString();
 
             Dictionary<string, object> row = new Dictionary<string, object>(7);
             row["id"] = his_id;
-            row["scheduler_id"] = I.id;
+            row["scheduler_id"] = itm.id;
             row["ran_time"] = DateTime.UtcNow;
-            row["run_time"] = I.TimeToRun;
+            row["run_time"] = itm.TimeToRun;
             row["is_complete"] = 0;
             row["complete_time"] = DateTime.UtcNow;
             row["reciept"] = "";
-            m_Gd.Insert("scheduler_history", row);
+            GD.Insert("scheduler_history", row);
 
-            I.HistoryLastID = his_id;
-            return I;
+            itm.HistoryLastID = his_id;
+            return itm;
         }
 
-        public SchedulerItem SaveHistoryComplete(SchedulerItem I)
+        public SchedulerItem SaveHistoryComplete(SchedulerItem itm)
         {
             Dictionary<string, object> values = new Dictionary<string, object>(3);
             values["is_complete"] = true;
@@ -201,11 +200,11 @@ namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
             values["reciept"] = "";
 
             QueryFilter filter = new QueryFilter();
-            filter.andFilters["id"] = I.HistoryLastID;
+            filter.andFilters["id"] = itm.HistoryLastID;
 
-            m_Gd.Update("scheduler_history", values, null, filter, null, null);
+            GD.Update("scheduler_history", values, null, filter, null, null);
 
-            return I;
+            return itm;
         }
 
         public void SaveHistoryCompleteReciept(string historyID, string reciept)
@@ -218,58 +217,70 @@ namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
             QueryFilter filter = new QueryFilter();
             filter.andFilters["id"] = historyID;
 
-            m_Gd.Update("scheduler_history", values, null, filter, null, null);
+            GD.Update("scheduler_history", values, null, filter, null, null);
         }
 
-        public void HistoryDeleteOld(SchedulerItem I)
+        public void HistoryDeleteOld(SchedulerItem itm)
         {
-            if ((I.id != "") && (I.HistoryLastID != ""))
-            {
+            if ((itm.id != "") && (itm.HistoryLastID != "")) {
                 QueryFilter filter = new QueryFilter();
-                filter.andNotFilters["id"] = I.HistoryLastID;
-                filter.andFilters["scheduler_id"] = I.id;
-                m_Gd.Delete("scheduler_history", filter);
+                filter.andNotFilters["id"] = itm.HistoryLastID;
+                filter.andFilters["scheduler_id"] = itm.id;
+                GD.Delete("scheduler_history", filter);
             }
         }
 
         public SchedulerItem Get(string id)
         {
-            if (id != "")
-            {
+            if (id != "") {
                 QueryFilter filter = new QueryFilter();
                 filter.andFilters["id"] = id;
-                List<string> results = m_Gd.Query(theFields, "scheduler", filter, null, null, null);
+                List<string> results = GD.Query(theFields, "scheduler", filter, null, null, null);
                 return LoadFromList(results);
             }
+
             return null;
         }
 
         public SchedulerItem Get(string scheduleFor, string fireFunction)
         {
-            if (scheduleFor != UUID.Zero.ToString())
-            {
+            if (scheduleFor != UUID.Zero.ToString()) {
                 QueryFilter filter = new QueryFilter();
                 filter.andFilters["schedule_for"] = scheduleFor;
                 filter.andFilters["fire_function"] = fireFunction;
-                List<string> results = m_Gd.Query(theFields, "scheduler", filter, null, null, null);
+                List<string> results = GD.Query(theFields, "scheduler", filter, null, null, null);
+
                 return LoadFromList(results);
             }
+
             return null;
         }
 
-        private SchedulerItem LoadFromDataReader(IDataReader dr)
+        public SchedulerItem GetFunctionItem(string fireFunction)
+        {
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["fire_function"] = fireFunction;
+            List<string> results = GD.Query(theFields, "scheduler", filter, null, null, null);
+
+            if (results == null || results.Count == 0)
+                return null;
+            
+            return LoadFromList(results);
+        }
+
+        SchedulerItem LoadFromDataReader(IDataReader dr)
         {
             return new SchedulerItem
                        {
                            id = dr["id"].ToString(),
                            FireFunction = dr["fire_function"].ToString(),
                            FireParams = dr["fire_params"].ToString(),
-                           HisotryKeep = bool.Parse(dr["keep_history"].ToString()),
+                           HistoryKeep = bool.Parse(dr["keep_history"].ToString()),
                            Enabled = bool.Parse(dr["enabled"].ToString()),
                            CreateTime = DateTime.Parse(dr["create_time"].ToString()),
                            HistoryLastID = dr["last_history_id"].ToString(),
                            TimeToRun = DateTime.Parse(dr["runs_next"].ToString()),
-                           HistoryReciept = bool.Parse(dr["require_reciept"].ToString()),
+                           HistoryReceipt = bool.Parse(dr["require_reciept"].ToString()),
                            RunEvery = int.Parse(dr["run_every"].ToString()),
                            RunOnce = bool.Parse(dr["run_once"].ToString()),
                            RunEveryType = (RepeatType) int.Parse(dr["run_every_type"].ToString()),
@@ -278,10 +289,11 @@ namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
                        };
         }
 
-        private SchedulerItem LoadFromList(List<string> values)
+        SchedulerItem LoadFromList(List<string> values)
         {
             if (values == null) return null;
             if (values.Count == 0) return null;
+
             return new SchedulerItem
                        {
                            id = values[0],
@@ -290,8 +302,8 @@ namespace WhiteCore.Services.DataService.Connectors.Database.Scheduler
                            RunOnce = bool.Parse(values[3]),
                            RunEvery = int.Parse(values[4]),
                            TimeToRun = DateTime.Parse(values[5]),
-                           HisotryKeep = bool.Parse(values[6]),
-                           HistoryReciept = bool.Parse(values[7]),
+                           HistoryKeep = bool.Parse(values[6]),
+                           HistoryReceipt = bool.Parse(values[7]),
                            HistoryLastID = values[8],
                            CreateTime = DateTime.Parse(values[9]),
                            StartTime = DateTime.Parse(values[10]),

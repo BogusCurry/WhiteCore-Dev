@@ -26,13 +26,12 @@
  */
 
 using System.Collections.Generic;
-using WhiteCore.Framework;
-using WhiteCore.Framework.DatabaseInterfaces;
-using WhiteCore.Framework.Modules;
-using WhiteCore.Framework.Services;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
+using WhiteCore.Framework.DatabaseInterfaces;
+using WhiteCore.Framework.Modules;
+using WhiteCore.Framework.Services;
 
 namespace WhiteCore.Services.DataService
 {
@@ -49,7 +48,7 @@ namespace WhiteCore.Services.DataService
     /// </summary>
     public class LocalGenericsConnector : IGenericsConnector
     {
-        private IGenericData GD;
+        IGenericData GD;
 
         #region IGenericsConnector Members
 
@@ -64,10 +63,12 @@ namespace WhiteCore.Services.DataService
                     defaultConnectionString = source.Configs[Name].GetString("ConnectionString", defaultConnectionString);
 
                 if (GD != null)
-                    GD.ConnectToDatabase(defaultConnectionString, "Generics",
-                                         source.Configs["WhiteCoreConnectors"].GetBoolean("ValidateTables", true));
+                {
+                    GD.ConnectToDatabase (defaultConnectionString, "Generics",
+                        source.Configs ["WhiteCoreConnectors"].GetBoolean ("ValidateTables", true));
 
-                Framework.Utilities.DataManager.RegisterPlugin(this);
+                    Framework.Utilities.DataManager.RegisterPlugin (this);
+                }
             }
         }
 

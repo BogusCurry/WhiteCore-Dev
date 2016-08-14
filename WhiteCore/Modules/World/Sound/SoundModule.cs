@@ -34,14 +34,12 @@ using WhiteCore.Framework.SceneInfo.Entities;
 using WhiteCore.Framework.Utilities;
 using Nini.Config;
 using OpenMetaverse;
-using WhiteCore.Framework;
+
 
 namespace WhiteCore.Modules.Sound
 {
     public class SoundModule : INonSharedRegionModule, ISoundModule
     {
-        //private static readonly ILog MainConsole.Instance = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private readonly Dictionary<UUID, ConeOfSilence> Cones = new Dictionary<UUID, ConeOfSilence>();
         protected IScene m_scene;
 
@@ -213,7 +211,7 @@ namespace WhiteCore.Modules.Sound
             if (parcelManagement != null)
             {
                 ILO = parcelManagement.GetLandObject(position.X, position.Y);
-                if (ILO != null) //Check only if null, otherwise this breaks megaregions
+                if (ILO != null) //Check only if null, otherwise this breaks mega-regions
                     LocalOnly = (ILO.LandData.Flags & (uint) ParcelFlags.SoundLocal) == (uint) ParcelFlags.SoundLocal;
             }
             ISceneChildEntity part = m_scene.GetSceneObjectPart(objectID);

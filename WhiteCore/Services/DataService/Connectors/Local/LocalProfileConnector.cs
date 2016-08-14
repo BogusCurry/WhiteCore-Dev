@@ -26,23 +26,26 @@
  */
 
 using System.Collections.Generic;
-using WhiteCore.Framework;
+using Nini.Config;
+using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 using WhiteCore.Framework.DatabaseInterfaces;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.Services;
 using WhiteCore.Framework.Services.ClassHelpers.Profile;
 using WhiteCore.Framework.Utilities;
-using Nini.Config;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
 
 namespace WhiteCore.Services.DataService
 {
     public class LocalProfileConnector : ConnectorBase, IProfileConnector
     {
         //We can use a cache because we are the only place that profiles will be served from
-        private readonly Dictionary<UUID, IUserProfileInfo> UserProfilesCache = new Dictionary<UUID, IUserProfileInfo>();
-        private IGenericData GD;
+        readonly Dictionary<UUID, IUserProfileInfo> UserProfilesCache = new Dictionary<UUID, IUserProfileInfo>();
+        IGenericData GD;
+        string m_userProfileTable = "user_profile";
+        string m_userPicksTable = "user_picks";
+        string m_userClassifiedsTable = "user_classifieds";
+
 
         #region IProfileConnector Members
 
@@ -103,7 +106,7 @@ namespace WhiteCore.Services.DataService
             filter.andFilters["`Key`"] = "LLProfile";
             List<string> query = null;
             //Grab it from the almost generic interface
-            query = GD.Query(new[] {"Value"}, "userdata", filter, null, null, null);
+            query = GD.Query(new[] { "Value" }, m_userProfileTable, filter, null, null, null);
 
             if (query == null || query.Count == 0)
                 return null;
@@ -128,9 +131,10 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public bool UpdateUserProfile(IUserProfileInfo Profile)
         {
-            object remoteValue = DoRemote(Profile);
-            if (remoteValue != null || m_doRemoteOnly)
-                return remoteValue != null && (bool) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (Profile);
+                return remoteValue != null && (bool)remoteValue;
+            }
 
             IUserProfileInfo previousProfile = GetUserProfile(Profile.PrincipalID);
             //Make sure the previous one exists
@@ -153,7 +157,7 @@ namespace WhiteCore.Services.DataService
             lock(UserProfilesCache)
                 UserProfilesCache[Profile.PrincipalID] = Profile;
 
-            return GD.Update("userdata", values, null, filter, null, null);
+            return GD.Update(m_userProfileTable, values, null, filter, null, null);
         }
 
         public void ClearCache(UUID agentID)
@@ -180,15 +184,16 @@ namespace WhiteCore.Services.DataService
 
             values.Add(OSDParser.SerializeLLSDXmlString(profile.ToOSD())); //Value which is a default Profile
 
-            GD.Insert("userdata", values.ToArray());
+            GD.Insert(m_userProfileTable, values.ToArray());
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public bool AddClassified(Classified classified)
         {
-            object remoteValue = DoRemote(classified);
-            if (remoteValue != null || m_doRemoteOnly)
-                return remoteValue != null && (bool) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (classified);
+                return remoteValue != null && (bool)remoteValue;
+            }
 
             if (GetUserProfile(classified.CreatorUUID) == null)
                 return false;
@@ -198,7 +203,7 @@ namespace WhiteCore.Services.DataService
             //It might be updating, delete the old
             QueryFilter filter = new QueryFilter();
             filter.andFilters["ClassifiedUUID"] = classified.ClassifiedUUID;
-            GD.Delete("userclassifieds", filter);
+            GD.Delete(m_userClassifiedsTable, filter);
             List<object> values = new List<object>
                                       {
                                           classified.Name,
@@ -211,20 +216,21 @@ namespace WhiteCore.Services.DataService
                                           classified.PriceForListing,
                                           keywords
                                       };
-            return GD.Insert("userclassifieds", values.ToArray());
+            return GD.Insert(m_userClassifiedsTable, values.ToArray());
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public List<Classified> GetClassifieds(UUID ownerID)
         {
-            object remoteValue = DoRemote(ownerID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (List<Classified>) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (ownerID);
+                return remoteValue != null ? (List<Classified>)remoteValue : new List<Classified> ();
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["OwnerUUID"] = ownerID;
 
-            List<string> query = GD.Query(new[] {"*"}, "userclassifieds", filter, null, null, null);
+            List<string> query = GD.Query(new[] { "*" }, m_userClassifiedsTable, filter, null, null, null);
 
             List<Classified> classifieds = new List<Classified>();
             for (int i = 0; i < query.Count; i += 9)
@@ -239,19 +245,19 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public Classified GetClassified(UUID queryClassifiedID)
         {
-            object remoteValue = DoRemote(queryClassifiedID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (Classified) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (queryClassifiedID);
+                return remoteValue != null ? (Classified)remoteValue : null;
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["ClassifiedUUID"] = queryClassifiedID;
 
-            List<string> query = GD.Query(new[] {"*"}, "userclassifieds", filter, null, null, null);
+            List<string> query = GD.Query(new[] { "*" }, m_userClassifiedsTable, filter, null, null, null);
 
             if (query.Count < 9)
-            {
                 return null;
-            }
+            
             Classified classified = new Classified();
             classified.FromOSD((OSDMap) OSDParser.DeserializeJson(query[6]));
             return classified;
@@ -260,21 +266,23 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public void RemoveClassified(UUID queryClassifiedID)
         {
-            object remoteValue = DoRemote(queryClassifiedID);
-            if (remoteValue != null || m_doRemoteOnly)
+            if (m_doRemoteOnly) {
+                DoRemote (queryClassifiedID);
                 return;
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["ClassifiedUUID"] = queryClassifiedID;
-            GD.Delete("userclassifieds", filter);
+            GD.Delete(m_userClassifiedsTable, filter);
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public bool AddPick(ProfilePickInfo pick)
         {
-            object remoteValue = DoRemote(pick);
-            if (remoteValue != null || m_doRemoteOnly)
-                return remoteValue != null && (bool) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (pick);
+                return remoteValue != null && (bool)remoteValue;
+            }
 
             if (GetUserProfile(pick.CreatorUUID) == null)
                 return false;
@@ -282,7 +290,7 @@ namespace WhiteCore.Services.DataService
             //It might be updating, delete the old
             QueryFilter filter = new QueryFilter();
             filter.andFilters["PickUUID"] = pick.PickUUID;
-            GD.Delete("userpicks", filter);
+            GD.Delete(m_userPicksTable, filter);
             List<object> values = new List<object>
                                       {
                                           pick.Name,
@@ -291,20 +299,21 @@ namespace WhiteCore.Services.DataService
                                           pick.PickUUID,
                                           OSDParser.SerializeJsonString(pick.ToOSD())
                                       };
-            return GD.Insert("userpicks", values.ToArray());
+            return GD.Insert(m_userPicksTable, values.ToArray());
         }
 
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public ProfilePickInfo GetPick(UUID queryPickID)
         {
-            object remoteValue = DoRemote(queryPickID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (ProfilePickInfo) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (queryPickID);
+                return remoteValue != null ? (ProfilePickInfo)remoteValue : null;
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["PickUUID"] = queryPickID;
 
-            List<string> query = GD.Query(new[] {"*"}, "userpicks", filter, null, null, null);
+            List<string> query = GD.Query(new[] { "*" }, m_userPicksTable, filter, null, null, null);
 
             if (query.Count < 5)
                 return null;
@@ -316,14 +325,15 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public List<ProfilePickInfo> GetPicks(UUID ownerID)
         {
-            object remoteValue = DoRemote(ownerID);
-            if (remoteValue != null || m_doRemoteOnly)
-                return (List<ProfilePickInfo>) remoteValue;
+            if (m_doRemoteOnly) {
+                object remoteValue = DoRemote (ownerID);
+                return remoteValue != null ? (List<ProfilePickInfo>)remoteValue : new List<ProfilePickInfo> ();
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["OwnerUUID"] = ownerID;
 
-            List<string> query = GD.Query(new[] {"*"}, "userpicks", filter, null, null, null);
+            List<string> query = GD.Query(new[] { "*" }, m_userPicksTable, filter, null, null, null);
 
             List<ProfilePickInfo> picks = new List<ProfilePickInfo>();
             for (int i = 0; i < query.Count; i += 5)
@@ -338,13 +348,14 @@ namespace WhiteCore.Services.DataService
         [CanBeReflected(ThreatLevel = ThreatLevel.Low)]
         public void RemovePick(UUID queryPickID)
         {
-            object remoteValue = DoRemote(queryPickID);
-            if (remoteValue != null || m_doRemoteOnly)
+            if (m_doRemoteOnly) {
+                DoRemote (queryPickID);
                 return;
+            }
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["PickUUID"] = queryPickID;
-            GD.Delete("userpicks", filter);
+            GD.Delete(m_userPicksTable, filter);
         }
 
         #endregion

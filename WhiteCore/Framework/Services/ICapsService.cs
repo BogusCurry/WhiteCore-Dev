@@ -30,7 +30,6 @@ using System.Collections.Generic;
 using System.Net;
 using WhiteCore.Framework.Modules;
 using WhiteCore.Framework.PresenceInfo;
-using WhiteCore.Framework.Servers.HttpServer;
 using WhiteCore.Framework.Servers.HttpServer.Interfaces;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -298,7 +297,7 @@ namespace WhiteCore.Framework.Services
         UUID AgentID { get; }
 
         /// <summary>
-        ///     The host URI of this CAPS Servie (http://IP:port)
+        ///     The host URI of this CAPS Service (http://IP:port)
         /// </summary>
         String HostUri { get; }
 
@@ -367,6 +366,12 @@ namespace WhiteCore.Framework.Services
         string CreateCAPS(string method, string appendedPath);
 
         /// <summary>
+        /// Gets the current region CAPS.
+        /// </summary>
+        /// <returns>The CAPs.</returns>
+        OSDMap GetCAPS();
+
+        /// <summary>
         ///     Get all CapsService modules
         /// </summary>
         /// <returns></returns>
@@ -433,7 +438,7 @@ namespace WhiteCore.Framework.Services
         void Initialise(UUID RegionID, IRegistryCore registry);
 
         /// <summary>
-        ///     Close the service and all underlieing services
+        ///     Close the service and all underlying services
         /// </summary>
         void Close();
 
